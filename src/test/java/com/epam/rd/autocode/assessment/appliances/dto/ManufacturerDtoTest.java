@@ -3,6 +3,7 @@ package com.epam.rd.autocode.assessment.appliances.dto;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,7 @@ import java.util.Locale;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 class ManufacturerDtoTest {
@@ -37,6 +39,17 @@ class ManufacturerDtoTest {
 
         String actualMessage = violations.iterator().next().getMessage();
         assertEquals(expectedMessage, actualMessage);
+    }
+
+    @Test
+    @DisplayName("Should be zero validation errors when data is correct")
+    void correctData_ShouldPassValidation() {
+        ManufacturerDto dto = new ManufacturerDto();
+        dto.setName("SampleName");
+
+        Set<ConstraintViolation<ManufacturerDto>> violations = validator.validate(dto);
+
+        assertTrue(violations.isEmpty());
     }
 
 }
