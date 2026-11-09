@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <!-- Latest compiled and minified CSS -->
@@ -35,23 +36,29 @@
             <td><span class="float-end" th:text="${order.client.name}"/></td>
             <td><span class="float-end" th:text="${order.employee.name}"/></td>
             <td>
-                <div th:if="${order.approved}">
-                    <a th:href="@{orders/}+${order.id}+@{/unapproved}">
-                      <span class="icon">
-                        <i class="fa fa-check"></i>
-                      </span>
+                <th:block sec:authorize="hasRole('EMPLOYEE')">
+                    <div th:if="${order.approved}">
+                        <a th:href="@{orders/}+${order.id}+@{/unapproved}">
+                          <span class="icon">
+                            <i class="fa fa-check"></i>
+                          </span>
 
-                    </a>
-                </div>
-                <!-- ELSE -->
-                <div th:unless="${order.approved}">
-                    <a th:href="@{orders/}+${order.id}+@{/approved}">
-                    <span class="icon">
-                          <i class="fa fa-minus"></i>
-                    </span>
+                        </a>
+                    </div>
+                    <!-- ELSE -->
+                    <div th:unless="${order.approved}">
+                        <a th:href="@{orders/}+${order.id}+@{/approved}">
+                        <span class="icon">
+                              <i class="fa fa-minus"></i>
+                        </span>
 
-                    </a>
-                </div>
+                        </a>
+                    </div>
+                </th:block>
+                <th:block sec:authorize="hasRole('CLIENT')">
+                    <span th:if="${order.approved}" class="badge bg-success">Approved</span>
+                    <span th:unless="${order.approved}" class="badge bg-warning">Pending</span>
+                </th:block>
             </td>
             <td><span class="float-end" th:text="${order.amount}"/></td>
             <td>
