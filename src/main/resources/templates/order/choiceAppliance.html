@@ -17,7 +17,7 @@
     <h1 th:text="#{appliance.header.list}">Appliances list</h1>
 
     <th:block th:each="appliance: ${appliances}">
-        <form class="store-form" th:action="@{add-into-order}" method="post">
+        <form class="store-form" th:action="@{/orders/add-into-order}" method="post">
             <input type="hidden" th:value="${ordersId}" th:name="ordersId">
             <input type="hidden" th:value="${appliance.id}" th:name="applianceId">
             <span th:text="${appliance.name}" />

@@ -83,7 +83,15 @@ public class OrderServiceImpl implements OrderService {
         existingOrder.setEmployee(employee);
 
         Orders mappedFromDto = ordersMapper.toEntity(dto);
-        existingOrder.setOrderRowSet(mappedFromDto.getOrderRowSet());
+
+        if (existingOrder.getOrderRowSet() != null) {
+            existingOrder.getOrderRowSet().clear();
+            if (mappedFromDto.getOrderRowSet() != null) {
+                existingOrder.getOrderRowSet().addAll(mappedFromDto.getOrderRowSet());
+            }
+        } else {
+            existingOrder.setOrderRowSet(mappedFromDto.getOrderRowSet());
+        }
 
         Orders updatedOrder = ordersRepository.save(existingOrder);
         return ordersMapper.toDto(updatedOrder);

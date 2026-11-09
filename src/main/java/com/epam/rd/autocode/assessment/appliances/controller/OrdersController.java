@@ -88,11 +88,16 @@ public class OrdersController {
                                         @RequestParam Long numbers,
                                         @RequestParam BigDecimal price) {
         OrdersDto order = orderService.getById(ordersId);
+        System.out.println(order);
 
         OrderRowDto rowDto = new OrderRowDto();
         rowDto.setAppliance(applianceService.getById(applianceId));
         rowDto.setNumber(numbers);
         rowDto.setAmount(price.multiply(BigDecimal.valueOf(numbers)));
+
+        System.out.println(rowDto.getAppliance());
+        System.out.println(rowDto.getNumber());
+        System.out.println(rowDto.getAmount());
 
         order.getOrderRowSet().add(rowDto);
         orderService.update(ordersId, order);
