@@ -1,6 +1,9 @@
 package com.epam.rd.autocode.assessment.appliances.service.impl;
 
 import com.epam.rd.autocode.assessment.appliances.dto.ClientDto;
+import com.epam.rd.autocode.assessment.appliances.dto.client.ClientResponse;
+import com.epam.rd.autocode.assessment.appliances.dto.client.CreateClientRequest;
+import com.epam.rd.autocode.assessment.appliances.dto.client.UpdateClientRequest;
 import com.epam.rd.autocode.assessment.appliances.exception.DuplicateEmailException;
 import com.epam.rd.autocode.assessment.appliances.exception.ResourceNotFoundException;
 import com.epam.rd.autocode.assessment.appliances.mapper.ClientMapper;
@@ -22,51 +25,47 @@ public class ClientServiceImpl implements ClientService {
     private final ClientMapper clientMapper;
 
     @Override
-    public List<ClientDto> getAll() {
+    public List<ClientResponse> getAll() {
         return clientRepository.findAll().stream()
-                .map(clientMapper::toDto)
+                .map(clientMapper::toResponse)
                 .toList();
     }
 
     @Override
-    public ClientDto getById(Long id) {
+    public ClientResponse getById(Long id) {
+        return clientRepository.findById(id)
+                .map(clientMapper::toResponse)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + id));
+    }
+
+    @Override
+    @Transactional
+    public ClientResponse create(CreateClientRequest request) {
+        if (clientRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new DuplicateEmailException("Email is already in use: " + request.getEmail());
+        }
+
+        Client client = clientMapper.toEntity(request);
+        Client saved = clientRepository.save(client);
+        return clientMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public ClientResponse update(Long id, UpdateClientRequest request) {
         Client client = clientRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + id));
-        return clientMapper.toDto(client);
-    }
 
-    @Override
-    @Transactional
-    public ClientDto create(ClientDto dto) {
-        if (clientRepository.findByEmail(dto.getEmail()).isPresent()) {
-            throw new DuplicateEmailException("Email is already in use: " + dto.getEmail());
-        }
+        clientMapper.updateEntityFromRequest(request, client);
+        Client updatedClient = clientRepository.save(client);
 
-        Client client = clientMapper.toEntity(dto);
-        client.setId(null);
-
-        Client savedClient = clientRepository.save(client);
-        return clientMapper.toDto(savedClient);
-    }
-
-    @Override
-    @Transactional
-    public ClientDto update(Long id, ClientDto dto) {
-        Client existingClient = clientRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + id));
-
-        Optional<Client> clientWithSameEmail = clientRepository.findByEmail(dto.getEmail());
+        Optional<Client> clientWithSameEmail = clientRepository.findByEmail(request.getEmail());
         if (clientWithSameEmail.isPresent() && !clientWithSameEmail.get().getId().equals(id)) {
-            throw new DuplicateEmailException("Email is already in use by another client: " + dto.getEmail());
+            throw new DuplicateEmailException("Email is already in use by another client: " + request.getEmail());
         }
 
-        existingClient.setName(dto.getName());
-        existingClient.setEmail(dto.getEmail());
-        existingClient.setPassword(dto.getPassword());
-        existingClient.setCard(dto.getCard());
 
-        Client updatedClient = clientRepository.save(existingClient);
-        return clientMapper.toDto(updatedClient);
+        return clientMapper.toResponse(updatedClient);
     }
 
     @Override

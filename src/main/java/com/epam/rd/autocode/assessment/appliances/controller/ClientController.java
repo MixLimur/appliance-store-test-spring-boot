@@ -1,6 +1,7 @@
 package com.epam.rd.autocode.assessment.appliances.controller;
 
 import com.epam.rd.autocode.assessment.appliances.dto.ClientDto;
+import com.epam.rd.autocode.assessment.appliances.dto.client.CreateClientRequest;
 import com.epam.rd.autocode.assessment.appliances.service.ClientService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,18 +28,18 @@ public class ClientController {
     @GetMapping("/add")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public String showAddForm(Model model) {
-        model.addAttribute("client", new ClientDto());
+        model.addAttribute("client", new CreateClientRequest());
         return "client/newClient";
     }
 
     @PostMapping("/add-client")
     @PreAuthorize("hasRole('EMPLOYEE')")
-    public String addClient(@Valid @ModelAttribute("client") ClientDto clientDto,
+    public String addClient(@Valid @ModelAttribute("client") CreateClientRequest request,
                             BindingResult result) {
         if (result.hasErrors()) {
             return "client/newClient";
         }
-        clientService.create(clientDto);
+        clientService.create(request);
         return "redirect:/clients";
     }
 
