@@ -1,6 +1,7 @@
 package com.epam.rd.autocode.assessment.appliances.controller;
 
 import com.epam.rd.autocode.assessment.appliances.dto.EmployeeDto;
+import com.epam.rd.autocode.assessment.appliances.dto.employee.CreateEmployeeRequest;
 import com.epam.rd.autocode.assessment.appliances.service.EmployeeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,18 +28,18 @@ public class EmployeeController {
     @GetMapping("/add")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public String showAddForm(Model model) {
-        model.addAttribute("employee", new EmployeeDto());
+        model.addAttribute("employee", new CreateEmployeeRequest());
         return "employee/newEmployee";
     }
 
     @PostMapping("/add-employee")
     @PreAuthorize("hasRole('EMPLOYEE')")
-    public String addEmployee(@Valid @ModelAttribute("employee") EmployeeDto employeeDto,
+    public String addEmployee(@Valid @ModelAttribute("employee") CreateEmployeeRequest request,
                               BindingResult result) {
         if (result.hasErrors()) {
             return "employee/newEmployee";
         }
-        employeeService.create(employeeDto);
+        employeeService.create(request);
         return "redirect:/employees";
     }
 

@@ -1,6 +1,9 @@
 package com.epam.rd.autocode.assessment.appliances.service.impl;
 
 import com.epam.rd.autocode.assessment.appliances.dto.EmployeeDto;
+import com.epam.rd.autocode.assessment.appliances.dto.employee.CreateEmployeeRequest;
+import com.epam.rd.autocode.assessment.appliances.dto.employee.EmployeeResponse;
+import com.epam.rd.autocode.assessment.appliances.dto.employee.UpdateEmployeeRequest;
 import com.epam.rd.autocode.assessment.appliances.exception.DuplicateEmailException;
 import com.epam.rd.autocode.assessment.appliances.exception.ResourceNotFoundException;
 import com.epam.rd.autocode.assessment.appliances.mapper.EmployeeMapper;
@@ -22,51 +25,46 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeMapper employeeMapper;
 
     @Override
-    public List<EmployeeDto> getAll() {
+    public List<EmployeeResponse> getAll() {
         return employeeRepository.findAll().stream()
-                .map(employeeMapper::toDto)
+                .map(employeeMapper::toResponse)
                 .toList();
     }
 
     @Override
-    public EmployeeDto getById(Long id) {
+    public EmployeeResponse getById(Long id) {
+        return employeeRepository.findById(id)
+                .map(employeeMapper::toResponse)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
+    }
+
+    @Override
+    @Transactional
+    public EmployeeResponse create(CreateEmployeeRequest request) {
+        if (employeeRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new DuplicateEmailException("Email is already in use: " + request.getEmail());
+        }
+
+        Employee employee = employeeMapper.toEntity(request);
+        Employee saved = employeeRepository.save(employee);
+        return employeeMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public EmployeeResponse update(Long id, UpdateEmployeeRequest request) {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
-        return employeeMapper.toDto(employee);
-    }
 
-    @Override
-    @Transactional
-    public EmployeeDto create(EmployeeDto dto) {
-        if (employeeRepository.findByEmail(dto.getEmail()).isPresent()) {
-            throw new DuplicateEmailException("Email is already in use: " + dto.getEmail());
-        }
+        employeeRepository.findByEmail(request.getEmail()).ifPresent(existingEmployee -> {
+            if (!existingEmployee.getId().equals(id)) {
+                throw new DuplicateEmailException("Email " + request.getEmail() + " is already in use by another user");
+            }
+        });
 
-        Employee employee = employeeMapper.toEntity(dto);
-        employee.setId(null);
-
-        Employee savedEmployee = employeeRepository.save(employee);
-        return employeeMapper.toDto(savedEmployee);
-    }
-
-    @Override
-    @Transactional
-    public EmployeeDto update(Long id, EmployeeDto dto) {
-        Employee existingEmployee = employeeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
-
-        Optional<Employee> employeeWithSameEmail = employeeRepository.findByEmail(dto.getEmail());
-        if (employeeWithSameEmail.isPresent() && !employeeWithSameEmail.get().getId().equals(id)) {
-            throw new DuplicateEmailException("Email is already in use by another employee: " + dto.getEmail());
-        }
-
-        existingEmployee.setName(dto.getName());
-        existingEmployee.setEmail(dto.getEmail());
-        existingEmployee.setPassword(dto.getPassword());
-        existingEmployee.setDepartment(dto.getDepartment());
-
-        Employee updatedEmployee = employeeRepository.save(existingEmployee);
-        return employeeMapper.toDto(updatedEmployee);
+        employeeMapper.updateEntityFromRequest(request, employee);
+        Employee updatedEmployee = employeeRepository.save(employee);
+        return employeeMapper.toResponse(updatedEmployee);
     }
 
     @Override

@@ -1,34 +1,51 @@
 package com.epam.rd.autocode.assessment.appliances.mapper;
 
 import com.epam.rd.autocode.assessment.appliances.dto.EmployeeDto;
+import com.epam.rd.autocode.assessment.appliances.dto.client.ClientResponse;
+import com.epam.rd.autocode.assessment.appliances.dto.client.CreateClientRequest;
+import com.epam.rd.autocode.assessment.appliances.dto.client.UpdateClientRequest;
+import com.epam.rd.autocode.assessment.appliances.dto.employee.CreateEmployeeRequest;
+import com.epam.rd.autocode.assessment.appliances.dto.employee.EmployeeResponse;
+import com.epam.rd.autocode.assessment.appliances.dto.employee.UpdateEmployeeRequest;
+import com.epam.rd.autocode.assessment.appliances.model.Client;
 import com.epam.rd.autocode.assessment.appliances.model.Employee;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class EmployeeMapper {
-    public EmployeeDto toDto(Employee entity) {
-        if (entity == null) {
-            return null;
-        }
-        EmployeeDto dto = new EmployeeDto();
-        dto.setId(entity.getId());
-        dto.setName(entity.getName());
-        dto.setEmail(entity.getEmail());
-        dto.setPassword(entity.getPassword());
-        dto.setDepartment(entity.getDepartment());
-        return dto;
+
+    private final PasswordEncoder passwordEncoder;
+
+    public Employee toEntity(CreateEmployeeRequest request) {
+        if (request == null) return null;
+
+        Employee employee = new Employee();
+        employee.setName(request.getName());
+        employee.setEmail(request.getEmail());
+        employee.setPassword(passwordEncoder.encode(request.getPassword()));
+        employee.setDepartment(request.getDepartment());
+        return employee;
     }
 
-    public Employee toEntity(EmployeeDto dto) {
-        if (dto == null) {
-            return null;
-        }
-        Employee entity = new Employee();
-        entity.setId(dto.getId());
-        entity.setName(dto.getName());
-        entity.setEmail(dto.getEmail());
-        entity.setPassword(dto.getPassword());
-        entity.setDepartment(dto.getDepartment());
-        return entity;
+    public void updateEntityFromRequest(UpdateEmployeeRequest request, Employee employee) {
+        if (request == null || employee == null) return;
+
+        employee.setName(request.getName());
+        employee.setEmail(request.getEmail());
+        employee.setDepartment(request.getDepartment());
+    }
+
+    public EmployeeResponse toResponse(Employee employee) {
+        if (employee == null) return null;
+
+        return new EmployeeResponse(
+                employee.getId(),
+                employee.getName(),
+                employee.getEmail(),
+                employee.getDepartment()
+        );
     }
 }
