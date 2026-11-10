@@ -1,28 +1,17 @@
 package com.epam.rd.autocode.assessment.appliances.dto.client;
 
-import com.epam.rd.autocode.assessment.appliances.model.Client;
-import jakarta.validation.constraints.Email;
+import com.epam.rd.autocode.assessment.appliances.dto.user.CreateUserRequest;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 @Data
-public class CreateClientRequest {
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
+public class CreateClientRequest extends CreateUserRequest {
 
-    @NotBlank(message = "{validation.client.name.empty}")
-    @Size(min = 2, max = 50, message = "{validation.client.name.size}")
-    private String name;
-
-    @NotBlank(message = "{validation.client.email.empty}")
-    @Email(message = "{validation.client.email.invalid}")
-    private String email;
-
-    @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$", message = "{validation.user.password.complexity}")
-    @NotBlank(message = "{validation.user.password.notblank}")
-    private String password;
-
-    @NotBlank(message = "{validation.client.card.empty}")
+    @NotBlank(message = "{validation.client.card.notblank}")
     private String card;
 
 }

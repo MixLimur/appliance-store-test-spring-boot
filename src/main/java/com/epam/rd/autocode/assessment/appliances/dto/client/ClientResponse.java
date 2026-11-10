@@ -1,18 +1,19 @@
 package com.epam.rd.autocode.assessment.appliances.dto.client;
 
-import com.epam.rd.autocode.assessment.appliances.model.Client;
-import lombok.AllArgsConstructor;
+import com.epam.rd.autocode.assessment.appliances.dto.user.UserResponse;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class ClientResponse {
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
+public class ClientResponse extends UserResponse {
 
-    private Long id;
-    private String name;
-    private String email;
     private String card;
 
+    public ClientResponse(Long id, String name, String email, String card) {
+        super(id, name, email);
+        this.card = card;
+    }
 }
