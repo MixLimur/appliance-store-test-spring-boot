@@ -1,6 +1,9 @@
 package com.epam.rd.autocode.assessment.appliances.service.impl;
 
 import com.epam.rd.autocode.assessment.appliances.dto.ManufacturerDto;
+import com.epam.rd.autocode.assessment.appliances.dto.manufacturer.CreateManufacturerRequest;
+import com.epam.rd.autocode.assessment.appliances.dto.manufacturer.ManufacturerResponse;
+import com.epam.rd.autocode.assessment.appliances.dto.manufacturer.UpdateManufacturerRequest;
 import com.epam.rd.autocode.assessment.appliances.exception.ResourceNotFoundException;
 import com.epam.rd.autocode.assessment.appliances.mapper.ManufacturerMapper;
 import com.epam.rd.autocode.assessment.appliances.model.Manufacturer;
@@ -20,39 +23,37 @@ public class ManufacturerServiceImpl implements ManufacturerService {
     private final ManufacturerMapper manufacturerMapper;
 
     @Override
-    public List<ManufacturerDto> getAll() {
+    public List<ManufacturerResponse> getAll() {
         return manufacturerRepository.findAll().stream()
-                .map(manufacturerMapper::toDto)
+                .map(manufacturerMapper::toResponse)
                 .toList();
     }
 
     @Override
-    public ManufacturerDto getById(Long id) {
+    public ManufacturerResponse getById(Long id) {
         Manufacturer manufacturer = manufacturerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Manufacturer not found with id: " + id));
-        return manufacturerMapper.toDto(manufacturer);
+        return manufacturerMapper.toResponse(manufacturer);
     }
 
     @Override
     @Transactional
-    public ManufacturerDto create(ManufacturerDto dto) {
-        Manufacturer manufacturer = manufacturerMapper.toEntity(dto);
-        manufacturer.setId(null);
-
+    public ManufacturerResponse create(CreateManufacturerRequest request) {
+        Manufacturer manufacturer = manufacturerMapper.toEntity(request);
         Manufacturer savedManufacturer = manufacturerRepository.save(manufacturer);
-        return manufacturerMapper.toDto(savedManufacturer);
+        return manufacturerMapper.toResponse(savedManufacturer);
     }
 
     @Override
     @Transactional
-    public ManufacturerDto update(Long id, ManufacturerDto dto) {
+    public ManufacturerResponse update(Long id, UpdateManufacturerRequest request) {
         Manufacturer existingManufacturer = manufacturerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Manufacturer not found with id: " + id));
 
-        existingManufacturer.setName(dto.getName());
+        manufacturerMapper.updateEntityFromRequest(request, existingManufacturer);
 
         Manufacturer updatedManufacturer = manufacturerRepository.save(existingManufacturer);
-        return manufacturerMapper.toDto(updatedManufacturer);
+        return manufacturerMapper.toResponse(updatedManufacturer);
     }
 
     @Override

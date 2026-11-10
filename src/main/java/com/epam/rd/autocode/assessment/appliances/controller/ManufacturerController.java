@@ -1,6 +1,7 @@
 package com.epam.rd.autocode.assessment.appliances.controller;
 
 import com.epam.rd.autocode.assessment.appliances.dto.ManufacturerDto;
+import com.epam.rd.autocode.assessment.appliances.dto.manufacturer.CreateManufacturerRequest;
 import com.epam.rd.autocode.assessment.appliances.service.ManufacturerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,18 +31,18 @@ public class ManufacturerController {
     @GetMapping("/add")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public String showAddForm(Model model) {
-        model.addAttribute("manufacturer", new ManufacturerDto());
+        model.addAttribute("manufacturer", new CreateManufacturerRequest());
         return "manufacture/newManufacturer";
     }
 
     @PostMapping("/add-manufacturer")
     @PreAuthorize("hasRole('EMPLOYEE')")
-    public String addManufacturer(@Valid @ModelAttribute("manufacturer") ManufacturerDto manufacturerDto,
+    public String addManufacturer(@Valid @ModelAttribute("manufacturer") CreateManufacturerRequest request,
                                   BindingResult result) {
         if (result.hasErrors()) {
             return "manufacture/newManufacturer";
         }
-        manufacturerService.create(manufacturerDto);
+        manufacturerService.create(request);
         return "redirect:/manufacturers";
     }
 }
