@@ -4,6 +4,7 @@ import com.epam.rd.autocode.assessment.appliances.dto.ClientDto;
 import com.epam.rd.autocode.assessment.appliances.service.ClientService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -17,18 +18,21 @@ public class ClientController {
     private final ClientService clientService;
 
     @GetMapping()
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public String listClients(Model model) {
         model.addAttribute("clients", clientService.getAll());
         return "client/clients";
     }
 
     @GetMapping("/add")
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public String showAddForm(Model model) {
         model.addAttribute("client", new ClientDto());
         return "client/newClient";
     }
 
     @PostMapping("/add-client")
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public String addClient(@Valid @ModelAttribute("client") ClientDto clientDto,
                             BindingResult result) {
         if (result.hasErrors()) {
@@ -39,6 +43,7 @@ public class ClientController {
     }
 
     @GetMapping("/{id}/delete")
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public String deleteClient(@PathVariable Long id) {
         clientService.delete(id);
         return "redirect:/clients";

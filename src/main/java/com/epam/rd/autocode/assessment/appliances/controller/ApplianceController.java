@@ -7,6 +7,7 @@ import com.epam.rd.autocode.assessment.appliances.service.ApplianceService;
 import com.epam.rd.autocode.assessment.appliances.service.ManufacturerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -24,12 +25,14 @@ public class ApplianceController {
     private final ManufacturerService manufacturerService;
 
     @GetMapping()
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public String listAppliances(Model model) {
         model.addAttribute("appliances", applianceService.getAll());
         return "appliance/appliances";
     }
 
     @GetMapping("/add")
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public String showAddForm(Model model) {
         model.addAttribute("appliance", new ApplianceDto());
         populateDropdowns(model);
@@ -37,6 +40,7 @@ public class ApplianceController {
     }
 
     @PostMapping("/add-appliance")
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public String addAppliance(@Valid @ModelAttribute("appliance") ApplianceDto applianceDto,
                                BindingResult result, Model model) {
         if (result.hasErrors()) {

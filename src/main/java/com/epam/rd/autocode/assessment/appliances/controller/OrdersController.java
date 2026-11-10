@@ -7,6 +7,7 @@ import com.epam.rd.autocode.assessment.appliances.service.ClientService;
 import com.epam.rd.autocode.assessment.appliances.service.EmployeeService;
 import com.epam.rd.autocode.assessment.appliances.service.OrderService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -25,12 +26,14 @@ public class OrdersController {
 
 
     @GetMapping()
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
     public String listOrders(Model model) {
         model.addAttribute("orders", orderService.getAll());
         return "order/orders";
     }
 
     @GetMapping("/add")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
     public String showAddForm(Model model) {
         model.addAttribute("order", new OrdersDto());
         model.addAttribute("clients", clientService.getAll());
@@ -39,6 +42,7 @@ public class OrdersController {
     }
 
     @PostMapping("/add-order")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
     public String addOrder(@ModelAttribute("order") OrdersDto ordersDto) {
         ordersDto.setApproved(false);
         orderService.create(ordersDto);
@@ -46,12 +50,14 @@ public class OrdersController {
     }
 
     @GetMapping("/{id}/delete")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
     public String deleteOrder(@PathVariable Long id) {
         orderService.delete(id);
         return "redirect:/orders";
     }
 
     @GetMapping("/{id}/approved")
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public String approveOrder(@PathVariable Long id) {
         OrdersDto order = orderService.getById(id);
         order.setApproved(true);
@@ -60,6 +66,7 @@ public class OrdersController {
     }
 
     @GetMapping("/{id}/unapproved")
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public String unapproveOrder(@PathVariable Long id) {
         OrdersDto order = orderService.getById(id);
         order.setApproved(false);
@@ -68,6 +75,7 @@ public class OrdersController {
     }
 
     @GetMapping("/{id}/edit")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
     public String editOrder(@PathVariable Long id, Model model) {
         OrdersDto order = orderService.getById(id);
         model.addAttribute("order", order);
@@ -76,6 +84,7 @@ public class OrdersController {
     }
 
     @GetMapping("/{id}/choice-appliance")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
     public String showChoiceApplianceForm(@PathVariable Long id, Model model) {
         model.addAttribute("ordersId", id);
         model.addAttribute("appliances", applianceService.getAll());
@@ -83,6 +92,7 @@ public class OrdersController {
     }
 
     @PostMapping("/add-into-order")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
     public String addApplianceIntoOrder(@RequestParam Long ordersId,
                                         @RequestParam Long applianceId,
                                         @RequestParam Long numbers,

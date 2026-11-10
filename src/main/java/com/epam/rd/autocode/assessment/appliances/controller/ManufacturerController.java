@@ -4,6 +4,7 @@ import com.epam.rd.autocode.assessment.appliances.dto.ManufacturerDto;
 import com.epam.rd.autocode.assessment.appliances.service.ManufacturerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -20,18 +21,21 @@ public class ManufacturerController {
     private final ManufacturerService manufacturerService;
 
     @GetMapping()
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public String listManufacturers(Model model) {
         model.addAttribute("manufacturers", manufacturerService.getAll());
         return "manufacture/manufacturers";
     }
 
     @GetMapping("/add")
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public String showAddForm(Model model) {
         model.addAttribute("manufacturer", new ManufacturerDto());
         return "manufacture/newManufacturer";
     }
 
     @PostMapping("/add-manufacturer")
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public String addManufacturer(@Valid @ModelAttribute("manufacturer") ManufacturerDto manufacturerDto,
                                   BindingResult result) {
         if (result.hasErrors()) {
