@@ -56,13 +56,15 @@ public class ClientServiceImpl implements ClientService {
         Client client = clientRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + id));
 
-        clientMapper.updateEntityFromRequest(request, client);
-        Client updatedClient = clientRepository.save(client);
+        clientRepository.findByEmail(request.getEmail()).ifPresent(existingClient -> {
+            if (!existingClient.getId().equals(id)) {
+                throw new DuplicateEmailException("Email " + request.getEmail() + " is already in use by another user");
+            }
+        });
 
-        Optional<Client> clientWithSameEmail = clientRepository.findByEmail(request.getEmail());
-        if (clientWithSameEmail.isPresent() && !clientWithSameEmail.get().getId().equals(id)) {
-            throw new DuplicateEmailException("Email is already in use by another client: " + request.getEmail());
-        }
+        clientMapper.updateEntityFromRequest(request, client);
+
+        Client updatedClient = clientRepository.save(client);
 
 
         return clientMapper.toResponse(updatedClient);
