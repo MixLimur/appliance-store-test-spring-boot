@@ -74,7 +74,7 @@
             <td>
                 <th:block th:unless="${order.approved}">
                     <div>
-                        <a th:href="@{orders/}+${order.id}+@{/delete}">
+                        <a th:href="@{orders/}+${order.id}+@{/delete}" class="text-danger">
                             <i class="fa fa-times"></i>
                         </a>
                     </div>

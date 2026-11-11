@@ -1,5 +1,6 @@
 package com.epam.rd.autocode.assessment.appliances.controller;
 
+import com.epam.rd.autocode.assessment.appliances.dto.client.ClientResponse;
 import com.epam.rd.autocode.assessment.appliances.dto.employee.EmployeeResponse;
 import com.epam.rd.autocode.assessment.appliances.dto.orderRow.UpdateOrderRowRequest;
 import com.epam.rd.autocode.assessment.appliances.dto.orders.CreateOrdersRequest;
@@ -49,9 +50,21 @@ public class OrdersController {
 
     @GetMapping("/add")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
-    public String showAddForm(Model model) {
-        model.addAttribute("order", new CreateOrdersRequest());
-        model.addAttribute("clients", clientService.getAll());
+    public String showAddForm(Model model, Authentication authentication) {
+        CreateOrdersRequest request = new CreateOrdersRequest();
+
+        boolean isClient = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_CLIENT"));
+
+        if (isClient) {
+            ClientResponse currentClient = clientService.getByEmail(authentication.getName());
+            request.setClientId(currentClient.getId());
+            model.addAttribute("currentClientName", currentClient.getName());
+        } else {
+            model.addAttribute("clients", clientService.getAll());
+        }
+
+        model.addAttribute("order", request);
         return "order/newOrder";
     }
 
@@ -64,18 +77,33 @@ public class OrdersController {
             model.addAttribute("clients", clientService.getAll());
             return "order/newOrder";
         }
-        request.setApproved(false);
+
+        boolean isClient = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_CLIENT"));
 
         boolean isEmployee = authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_EMPLOYEE"));
 
-        if (isEmployee) {
+        if (isClient) {
+            ClientResponse currentClient = clientService.getByEmail(authentication.getName());
+            request.setClientId(currentClient.getId());
+            request.setEmployeeId(null);
+        } else if (isEmployee) {
             EmployeeResponse currentEmployee = employeeService.getByEmail(authentication.getName());
             request.setEmployeeId(currentEmployee.getId());
-        } else {
-            request.setEmployeeId(null);
         }
 
+        if (result.hasErrors()) {
+            if (!isClient) {
+                model.addAttribute("clients", clientService.getAll());
+            } else {
+                ClientResponse currentClient = clientService.getByEmail(authentication.getName());
+                model.addAttribute("currentClientName", currentClient.getName());
+            }
+            return "order/newOrder";
+        }
+
+        request.setApproved(false);
         orderService.create(request);
         return "redirect:/orders";
     }
@@ -203,5 +231,18 @@ public class OrdersController {
             redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
         }
         return "redirect:/orders";
+    }
+
+    @GetMapping("/{orderId}/row/{rowId}/delete")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
+    public String deleteOrderRow(@PathVariable Long orderId,
+                                 @PathVariable Long rowId,
+                                 RedirectAttributes redirectAttributes) {
+        try {
+            orderService.deleteOrderRow(orderId, rowId);
+        } catch (IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return "redirect:/orders/" + orderId + "/edit";
     }
 }

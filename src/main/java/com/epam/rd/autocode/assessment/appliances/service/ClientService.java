@@ -12,4 +12,5 @@ public interface ClientService {
     ClientResponse create(CreateClientRequest request);
     ClientResponse update(Long id, UpdateClientRequest request);
     void delete(Long id);
+    ClientResponse getByEmail(String email);
 }

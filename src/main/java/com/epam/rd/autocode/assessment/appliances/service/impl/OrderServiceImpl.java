@@ -135,5 +135,19 @@ public class OrderServiceImpl implements OrderService {
         existingOrder.setEmployee(employee);
         ordersRepository.save(existingOrder);
     }
+
+    @Override
+    @Transactional
+    public void deleteOrderRow(Long orderId, Long rowId) {
+        Orders existingOrder = ordersRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+
+        if (Boolean.TRUE.equals(existingOrder.getApproved())) {
+            throw new IllegalStateException("Cannot modify an approved order with id: " + orderId);
+        }
+
+        existingOrder.getOrderRowSet().removeIf(row -> row.getId().equals(rowId));
+        ordersRepository.save(existingOrder);
+    }
 }
 

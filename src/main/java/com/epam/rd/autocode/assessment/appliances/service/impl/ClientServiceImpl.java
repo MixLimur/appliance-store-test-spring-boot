@@ -76,4 +76,11 @@ public class ClientServiceImpl implements ClientService {
         }
         clientRepository.deleteById(id);
     }
+
+    @Override
+    public ClientResponse getByEmail(String email) {
+        return clientRepository.findByEmail(email)
+                .map(clientMapper::toResponse)
+                .orElseThrow(() -> new ResourceNotFoundException("Client not found with email: " + email));
+    }
 }

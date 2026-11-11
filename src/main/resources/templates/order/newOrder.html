@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
     <!-- Latest compiled and minified CSS -->
@@ -19,11 +20,19 @@
     </div>
 
     <p>
-        <span th:text="#{object.order.client}"></span>
-        <select th:field="*{clientId}" class="form-select">
-            <option th:each="client : ${clients}" th:value="${client.id}" th:text="${client.name}"></option>
-        </select>
-        <span th:if="${#fields.hasErrors('clientId')}" class="text-danger" th:errors="*{clientId}">Invalid client</span>
+        <span th:text="#{object.order.client}">Client</span>
+
+        <th:block sec:authorize="hasRole('EMPLOYEE')">
+            <select th:field="*{clientId}" class="form-select">
+                <option th:each="client : ${clients}" th:value="${client.id}" th:text="${client.name}"></option>
+            </select>
+            <span th:if="${#fields.hasErrors('clientId')}" class="text-danger" th:errors="*{clientId}">Invalid client</span>
+        </th:block>
+
+        <th:block sec:authorize="hasRole('CLIENT')">
+            <input type="text" class="form-control" th:value="${currentClientName}" disabled />
+            <input type="hidden" th:field="*{clientId}" />
+        </th:block>
     </p>
 
     <div class="btn-group">
