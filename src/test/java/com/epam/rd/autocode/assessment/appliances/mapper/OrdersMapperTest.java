@@ -1,9 +1,11 @@
 package com.epam.rd.autocode.assessment.appliances.mapper;
 
-import com.epam.rd.autocode.assessment.appliances.dto.ClientDto;
-import com.epam.rd.autocode.assessment.appliances.dto.EmployeeDto;
-import com.epam.rd.autocode.assessment.appliances.dto.OrderRowDto;
-import com.epam.rd.autocode.assessment.appliances.dto.OrdersDto;
+import com.epam.rd.autocode.assessment.appliances.dto.client.ClientResponse;
+import com.epam.rd.autocode.assessment.appliances.dto.employee.EmployeeResponse;
+import com.epam.rd.autocode.assessment.appliances.dto.orderRow.OrderRowResponse;
+import com.epam.rd.autocode.assessment.appliances.dto.orders.CreateOrdersRequest;
+import com.epam.rd.autocode.assessment.appliances.dto.orders.OrdersResponse;
+import com.epam.rd.autocode.assessment.appliances.dto.orders.UpdateOrdersRequest;
 import com.epam.rd.autocode.assessment.appliances.model.Client;
 import com.epam.rd.autocode.assessment.appliances.model.Employee;
 import com.epam.rd.autocode.assessment.appliances.model.OrderRow;
@@ -23,11 +25,12 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class OrdersMapperTest {
-
     @Mock
     private ClientMapper clientMapper;
+
     @Mock
     private EmployeeMapper employeeMapper;
+
     @Mock
     private OrderRowMapper orderRowMapper;
 
@@ -35,24 +38,29 @@ class OrdersMapperTest {
     private OrdersMapper ordersMapper;
 
     private Orders entity;
-    private OrdersDto dto;
+    private CreateOrdersRequest createRequest;
+    private UpdateOrdersRequest updateRequest;
     private Client client;
-    private ClientDto clientDto;
+    private ClientResponse clientResponse;
     private Employee employee;
-    private EmployeeDto employeeDto;
+    private EmployeeResponse employeeResponse;
     private OrderRow orderRow;
-    private OrderRowDto orderRowDto;
+    private OrderRowResponse orderRowResponse;
 
     @BeforeEach
     void setUp() {
         client = new Client();
-        clientDto = new ClientDto();
+        client.setId(5L);
+        clientResponse = new ClientResponse(5L, "John Doe", "john@example.com", "1234-5678");
 
         employee = new Employee();
-        employeeDto = new EmployeeDto();
+        employee.setId(2L);
+        employeeResponse = new EmployeeResponse(2L, "Jane Smith", "jane@example.com", "Sales");
 
         orderRow = new OrderRow();
-        orderRowDto = new OrderRowDto();
+        orderRow.setId(10L);
+        orderRowResponse = new OrderRowResponse();
+        orderRowResponse.setId(10L);
 
         entity = new Orders();
         entity.setId(1L);
@@ -61,67 +69,86 @@ class OrdersMapperTest {
         entity.setEmployee(employee);
         entity.setOrderRowSet(Set.of(orderRow));
 
-        dto = new OrdersDto();
-        dto.setId(1L);
-        dto.setApproved(true);
-        dto.setClient(clientDto);
-        dto.setEmployee(employeeDto);
-        dto.setOrderRowSet(Set.of(orderRowDto));
+        createRequest = new CreateOrdersRequest();
+        createRequest.setClientId(5L);
+        createRequest.setEmployeeId(2L);
+        createRequest.setApproved(true);
+
+        updateRequest = new UpdateOrdersRequest();
+        updateRequest.setId(1L);
+        updateRequest.setClientId(5L);
+        updateRequest.setEmployeeId(2L);
+        updateRequest.setApproved(false);
     }
 
     @Test
-    @DisplayName("Should map Entity to DTO")
-    void toDto_ValidEntity_ReturnsDto() {
-        when(clientMapper.toDto(client)).thenReturn(clientDto);
-        when(employeeMapper.toDto(employee)).thenReturn(employeeDto);
-        when(orderRowMapper.toDto(orderRow)).thenReturn(orderRowDto);
+    @DisplayName("Should map Entity to Response correctly")
+    void toResponse_ValidEntity_ReturnsResponse() {
+        when(clientMapper.toResponse(client)).thenReturn(clientResponse);
+        when(employeeMapper.toResponse(employee)).thenReturn(employeeResponse);
+        when(orderRowMapper.toResponse(orderRow)).thenReturn(orderRowResponse);
 
-        OrdersDto result = ordersMapper.toDto(entity);
+        OrdersResponse result = ordersMapper.toResponse(entity);
 
         assertNotNull(result);
         assertEquals(1L, result.getId());
         assertTrue(result.getApproved());
         assertNotNull(result.getClient());
+        assertEquals(5L, result.getClient().getId());
         assertNotNull(result.getEmployee());
+        assertEquals(2L, result.getEmployee().getId());
         assertEquals(1, result.getOrderRowSet().size());
 
-        verify(clientMapper).toDto(client);
-        verify(employeeMapper).toDto(employee);
-        verify(orderRowMapper).toDto(orderRow);
+        verify(clientMapper).toResponse(client);
+        verify(employeeMapper).toResponse(employee);
+        verify(orderRowMapper).toResponse(orderRow);
     }
 
     @Test
-    @DisplayName("Should map DTO to Entity")
-    void toEntity_ValidDto_ReturnsEntity() {
-        when(clientMapper.toEntity(clientDto)).thenReturn(client);
-        when(employeeMapper.toEntity(employeeDto)).thenReturn(employee);
-        when(orderRowMapper.toEntity(orderRowDto)).thenReturn(orderRow);
+    @DisplayName("Should return null when Entity is null")
+    void toResponse_NullEntity_ReturnsNull() {
+        assertNull(ordersMapper.toResponse(null));
+    }
 
-        Orders result = ordersMapper.toEntity(dto);
+    @Test
+    @DisplayName("Should map CreateOrdersRequest to Entity correctly")
+    void toEntity_ValidCreateRequest_ReturnsEntity() {
+        Orders result = ordersMapper.toEntity(createRequest, client, employee, Set.of(orderRow));
 
         assertNotNull(result);
-        assertEquals(1L, result.getId());
         assertTrue(result.getApproved());
-        assertNotNull(result.getClient());
-        assertNotNull(result.getEmployee());
+        assertEquals(client, result.getClient());
+        assertEquals(employee, result.getEmployee());
         assertEquals(1, result.getOrderRowSet().size());
-
-        verify(clientMapper).toEntity(clientDto);
-        verify(employeeMapper).toEntity(employeeDto);
-        verify(orderRowMapper).toEntity(orderRowDto);
     }
 
     @Test
-    @DisplayName("Should handle null employee correctly")
-    void toDto_NullEmployee_ReturnsDtoWithoutEmployee() {
+    @DisplayName("Should return null when CreateOrdersRequest is null")
+    void toEntity_NullRequest_ReturnsNull() {
+        assertNull(ordersMapper.toEntity(null, client, employee, Set.of(orderRow)));
+    }
+
+    @Test
+    @DisplayName("Should handle null employee when mapping Entity to Response")
+    void toResponse_NullEmployee_ReturnsResponseWithoutEmployee() {
         entity.setEmployee(null);
-        when(clientMapper.toDto(client)).thenReturn(clientDto);
-        when(orderRowMapper.toDto(orderRow)).thenReturn(orderRowDto);
+        when(clientMapper.toResponse(client)).thenReturn(clientResponse);
+        when(orderRowMapper.toResponse(orderRow)).thenReturn(orderRowResponse);
 
-        OrdersDto result = ordersMapper.toDto(entity);
+        OrdersResponse result = ordersMapper.toResponse(entity);
 
+        assertNotNull(result);
         assertNull(result.getEmployee());
-        verify(employeeMapper, never()).toDto(any());
+        verify(employeeMapper, never()).toResponse(any());
     }
 
+    @Test
+    @DisplayName("Should update existing Orders entity from UpdateOrdersRequest")
+    void updateEntityFromRequest_ValidUpdateRequest_UpdatesEntity() {
+        ordersMapper.updateEntityFromRequest(updateRequest, entity, client, employee, Set.of(orderRow));
+
+        assertFalse(entity.getApproved());
+        assertEquals(client, entity.getClient());
+        assertEquals(employee, entity.getEmployee());
+    }
 }

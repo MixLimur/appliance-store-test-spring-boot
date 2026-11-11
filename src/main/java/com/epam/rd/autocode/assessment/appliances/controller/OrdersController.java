@@ -2,6 +2,11 @@ package com.epam.rd.autocode.assessment.appliances.controller;
 
 import com.epam.rd.autocode.assessment.appliances.dto.OrderRowDto;
 import com.epam.rd.autocode.assessment.appliances.dto.OrdersDto;
+import com.epam.rd.autocode.assessment.appliances.dto.orderRow.CreateOrderRowRequest;
+import com.epam.rd.autocode.assessment.appliances.dto.orderRow.UpdateOrderRowRequest;
+import com.epam.rd.autocode.assessment.appliances.dto.orders.CreateOrdersRequest;
+import com.epam.rd.autocode.assessment.appliances.dto.orders.OrdersResponse;
+import com.epam.rd.autocode.assessment.appliances.dto.orders.UpdateOrdersRequest;
 import com.epam.rd.autocode.assessment.appliances.service.ApplianceService;
 import com.epam.rd.autocode.assessment.appliances.service.ClientService;
 import com.epam.rd.autocode.assessment.appliances.service.EmployeeService;
@@ -10,9 +15,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/orders")
@@ -35,7 +43,7 @@ public class OrdersController {
     @GetMapping("/add")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
     public String showAddForm(Model model) {
-        model.addAttribute("order", new OrdersDto());
+        model.addAttribute("order", new CreateOrdersRequest());
         model.addAttribute("clients", clientService.getAll());
         model.addAttribute("employees", employeeService.getAll());
         return "order/newOrder";
@@ -43,9 +51,15 @@ public class OrdersController {
 
     @PostMapping("/add-order")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
-    public String addOrder(@ModelAttribute("order") OrdersDto ordersDto) {
-        ordersDto.setApproved(false);
-        orderService.create(ordersDto);
+    public String addOrder(@ModelAttribute("order") CreateOrdersRequest request, BindingResult result,
+                           Model model) {
+        if (result.hasErrors()) {
+            model.addAttribute("clients", clientService.getAll());
+            model.addAttribute("employees", employeeService.getAll());
+            return "order/newOrder";
+        }
+        request.setApproved(false);
+        orderService.create(request);
         return "redirect:/orders";
     }
 
@@ -59,25 +73,21 @@ public class OrdersController {
     @GetMapping("/{id}/approved")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public String approveOrder(@PathVariable Long id) {
-        OrdersDto order = orderService.getById(id);
-        order.setApproved(true);
-        orderService.update(id, order);
+        setApprovalStatus(id, true);
         return "redirect:/orders";
     }
 
     @GetMapping("/{id}/unapproved")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public String unapproveOrder(@PathVariable Long id) {
-        OrdersDto order = orderService.getById(id);
-        order.setApproved(false);
-        orderService.update(id, order);
+        setApprovalStatus(id, false);
         return "redirect:/orders";
     }
 
     @GetMapping("/{id}/edit")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
     public String editOrder(@PathVariable Long id, Model model) {
-        OrdersDto order = orderService.getById(id);
+        OrdersResponse order = orderService.getById(id);
         model.addAttribute("order", order);
         model.addAttribute("rows", order.getOrderRowSet());
         return "order/editOrder";
@@ -97,21 +107,48 @@ public class OrdersController {
                                         @RequestParam Long applianceId,
                                         @RequestParam Long numbers,
                                         @RequestParam BigDecimal price) {
-        OrdersDto order = orderService.getById(ordersId);
-        System.out.println(order);
+        OrdersResponse existingOrder = orderService.getById(ordersId);
+        UpdateOrdersRequest updateRequest = mapToUpdateRequest(existingOrder);
 
-        OrderRowDto rowDto = new OrderRowDto();
-        rowDto.setAppliance(applianceService.getById(applianceId));
-        rowDto.setNumber(numbers);
-        rowDto.setAmount(price.multiply(BigDecimal.valueOf(numbers)));
+        UpdateOrderRowRequest newRow = new UpdateOrderRowRequest();
+        newRow.setApplianceId(applianceId);
+        newRow.setNumber(numbers);
+        newRow.setAmount(price.multiply(BigDecimal.valueOf(numbers)));
 
-        System.out.println(rowDto.getAppliance());
-        System.out.println(rowDto.getNumber());
-        System.out.println(rowDto.getAmount());
-
-        order.getOrderRowSet().add(rowDto);
-        orderService.update(ordersId, order);
+        updateRequest.getOrderRowSet().add(newRow);
+        orderService.update(ordersId, updateRequest);
 
         return "redirect:/orders/" + ordersId + "/edit";
+    }
+
+    private void setApprovalStatus(Long id, boolean approved) {
+        OrdersResponse existingOrder = orderService.getById(id);
+        UpdateOrdersRequest updateRequest = mapToUpdateRequest(existingOrder);
+        updateRequest.setApproved(approved);
+        orderService.update(id, updateRequest);
+    }
+
+    private UpdateOrdersRequest mapToUpdateRequest(OrdersResponse response) {
+        UpdateOrdersRequest request = new UpdateOrdersRequest();
+        request.setId(response.getId());
+        request.setClientId(response.getClient() != null ? response.getClient().getId() : null);
+        request.setEmployeeId(response.getEmployee() != null ? response.getEmployee().getId() : null);
+        request.setApproved(response.getApproved());
+
+        if (response.getOrderRowSet() != null) {
+            Set<UpdateOrderRowRequest> rows = response.getOrderRowSet().stream()
+                    .map(row -> {
+                        UpdateOrderRowRequest r = new UpdateOrderRowRequest();
+                        r.setId(row.getId());
+                        r.setApplianceId(row.getAppliance() != null ? row.getAppliance().getId() : null);
+                        r.setNumber(row.getNumber());
+                        r.setAmount(row.getAmount());
+                        return r;
+                    })
+                    .collect(Collectors.toSet());
+            request.setOrderRowSet(rows);
+        }
+
+        return request;
     }
 }

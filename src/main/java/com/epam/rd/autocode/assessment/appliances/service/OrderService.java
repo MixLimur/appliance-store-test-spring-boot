@@ -1,13 +1,16 @@
 package com.epam.rd.autocode.assessment.appliances.service;
 
 import com.epam.rd.autocode.assessment.appliances.dto.OrdersDto;
+import com.epam.rd.autocode.assessment.appliances.dto.orders.CreateOrdersRequest;
+import com.epam.rd.autocode.assessment.appliances.dto.orders.OrdersResponse;
+import com.epam.rd.autocode.assessment.appliances.dto.orders.UpdateOrdersRequest;
 
 import java.util.List;
 
 public interface OrderService {
-    List<OrdersDto> getAll();
-    OrdersDto getById(Long id);
-    OrdersDto create(OrdersDto dto);
-    OrdersDto update(Long id, OrdersDto dto);
+    List<OrdersResponse> getAll();
+    OrdersResponse getById(Long id);
+    OrdersResponse create(CreateOrdersRequest request);
+    OrdersResponse update(Long id, UpdateOrdersRequest request);
     void delete(Long id);
 }

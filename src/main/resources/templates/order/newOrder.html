@@ -13,20 +13,17 @@
 <div th:insert="~{menunavy::navy}"></div>
 <h1 th:text="#{orders.btn.new}"></h1>
 <form action="#" th:action="@{add-order}" th:object="${order}" method="post">
-    <p><span th:text="#{object.order.id}"></span> <input type="text" th:field="*{id}"/></p>
     <p>
-        <!--        <p th:if="${#fields.hasErrors('powerType')}" class="text-danger">Invalid power type</p>-->
         <span th:text="#{object.order.client}"></span>
-
-        <select th:field="*{client}">
+        <select th:field="*{clientId}" class="form-select">
             <option th:each="client : ${clients}" th:value="${client.id}" th:text="${client.name}"></option>
         </select>
+        <span th:if="${#fields.hasErrors('clientId')}" class="text-danger" th:errors="*{clientId}">Invalid client</span>
     </p>
     <p>
-        <!--        <p th:if="${#fields.hasErrors('powerType')}" class="text-danger">Invalid power type</p>-->
-        <span th:text="#{object.order.employee}"></span>
-
-        <select th:field="*{employee}">
+        <span th:text="#{object.order.employee}">Employee</span>
+        <select th:field="*{employeeId}" class="form-select">
+            <option value="">-- None --</option>
             <option th:each="employee : ${employees}" th:value="${employee.id}" th:text="${employee.name}"></option>
         </select>
     </p>
