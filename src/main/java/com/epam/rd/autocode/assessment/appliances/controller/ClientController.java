@@ -1,6 +1,8 @@
 package com.epam.rd.autocode.assessment.appliances.controller;
 
+import com.epam.rd.autocode.assessment.appliances.dto.client.ClientResponse;
 import com.epam.rd.autocode.assessment.appliances.dto.client.CreateClientRequest;
+import com.epam.rd.autocode.assessment.appliances.dto.client.UpdateClientRequest;
 import com.epam.rd.autocode.assessment.appliances.service.ClientService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -59,6 +61,31 @@ public class ClientController {
             );
             redirectAttributes.addFlashAttribute("errorMessage", localizedMessage);
         }
+        return "redirect:/clients";
+    }
+
+    @GetMapping("/{id}/edit")
+    public String showEditForm(@PathVariable Long id, Model model) {
+        ClientResponse client = clientService.getById(id);
+
+        UpdateClientRequest request = new UpdateClientRequest();
+        request.setId(client.getId());
+        request.setName(client.getName());
+        request.setEmail(client.getEmail());
+        request.setCard(client.getCard());
+
+        model.addAttribute("client", request);
+        return "client/editClient";
+    }
+
+    @PostMapping("/{id}/edit")
+    public String updateClient(@PathVariable Long id,
+                               @Valid @ModelAttribute("client") UpdateClientRequest request,
+                               BindingResult result) {
+        if (result.hasErrors()) {
+            return "client/editClient";
+        }
+        clientService.update(id, request);
         return "redirect:/clients";
     }
 

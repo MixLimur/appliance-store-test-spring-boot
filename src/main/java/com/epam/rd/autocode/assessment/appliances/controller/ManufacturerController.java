@@ -1,6 +1,8 @@
 package com.epam.rd.autocode.assessment.appliances.controller;
 
 import com.epam.rd.autocode.assessment.appliances.dto.manufacturer.CreateManufacturerRequest;
+import com.epam.rd.autocode.assessment.appliances.dto.manufacturer.ManufacturerResponse;
+import com.epam.rd.autocode.assessment.appliances.dto.manufacturer.UpdateManufacturerRequest;
 import com.epam.rd.autocode.assessment.appliances.exception.ResourceNotFoundException;
 import com.epam.rd.autocode.assessment.appliances.service.ManufacturerService;
 import jakarta.validation.Valid;
@@ -60,6 +62,29 @@ public class ManufacturerController {
             );
             redirectAttributes.addFlashAttribute("errorMessage", localizedMessage);
         }
+        return "redirect:/manufacturers";
+    }
+
+    @GetMapping("/{id}/edit")
+    public String showEditForm(@PathVariable Long id, Model model) {
+        ManufacturerResponse manufacturer = manufacturerService.getById(id);
+
+        UpdateManufacturerRequest request = new UpdateManufacturerRequest();
+        request.setId(manufacturer.getId());
+        request.setName(manufacturer.getName());
+
+        model.addAttribute("manufacturer", request);
+        return "manufacture/editManufacturer";
+    }
+
+    @PostMapping("/{id}/edit")
+    public String updateManufacturer(@PathVariable Long id,
+                                     @Valid @ModelAttribute("manufacturer") UpdateManufacturerRequest request,
+                                     BindingResult result) {
+        if (result.hasErrors()) {
+            return "manufacture/editManufacturer";
+        }
+        manufacturerService.update(id, request);
         return "redirect:/manufacturers";
     }
 

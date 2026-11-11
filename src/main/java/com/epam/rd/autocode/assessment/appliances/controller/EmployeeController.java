@@ -1,6 +1,8 @@
 package com.epam.rd.autocode.assessment.appliances.controller;
 
 import com.epam.rd.autocode.assessment.appliances.dto.employee.CreateEmployeeRequest;
+import com.epam.rd.autocode.assessment.appliances.dto.employee.EmployeeResponse;
+import com.epam.rd.autocode.assessment.appliances.dto.employee.UpdateEmployeeRequest;
 import com.epam.rd.autocode.assessment.appliances.service.EmployeeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -59,6 +61,31 @@ public class EmployeeController {
             );
             redirectAttributes.addFlashAttribute("errorMessage", localizedMessage);
         }
+        return "redirect:/employees";
+    }
+
+    @GetMapping("/{id}/edit")
+    public String showEditForm(@PathVariable Long id, Model model) {
+        EmployeeResponse employee = employeeService.getById(id);
+
+        UpdateEmployeeRequest request = new UpdateEmployeeRequest();
+        request.setId(employee.getId());
+        request.setName(employee.getName());
+        request.setEmail(employee.getEmail());
+        request.setDepartment(employee.getDepartment());
+
+        model.addAttribute("employee", request);
+        return "employee/editEmployee";
+    }
+
+    @PostMapping("/{id}/edit")
+    public String updateEmployee(@PathVariable Long id,
+                                 @Valid @ModelAttribute("employee") UpdateEmployeeRequest request,
+                                 BindingResult result) {
+        if (result.hasErrors()) {
+            return "employee/editEmployee";
+        }
+        employeeService.update(id, request);
         return "redirect:/employees";
     }
 

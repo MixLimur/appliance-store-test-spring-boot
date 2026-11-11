@@ -1,6 +1,8 @@
 package com.epam.rd.autocode.assessment.appliances.controller;
 
+import com.epam.rd.autocode.assessment.appliances.dto.appliance.ApplianceResponse;
 import com.epam.rd.autocode.assessment.appliances.dto.appliance.CreateApplianceRequest;
+import com.epam.rd.autocode.assessment.appliances.dto.appliance.UpdateApplianceRequest;
 import com.epam.rd.autocode.assessment.appliances.model.Category;
 import com.epam.rd.autocode.assessment.appliances.model.PowerType;
 import com.epam.rd.autocode.assessment.appliances.service.ApplianceService;
@@ -65,6 +67,40 @@ public class ApplianceController {
             );
             redirectAttributes.addFlashAttribute("errorMessage", localizedMessage);
         }
+        return "redirect:/appliances";
+    }
+
+    @GetMapping("/{id}/edit")
+    public String showEditForm(@PathVariable Long id, Model model) {
+        ApplianceResponse appliance = applianceService.getById(id);
+
+        UpdateApplianceRequest request = new UpdateApplianceRequest();
+        request.setId(appliance.getId());
+        request.setName(appliance.getName());
+        request.setCategory(appliance.getCategory());
+        request.setModel(appliance.getModel());
+        request.setPrice(appliance.getPrice());
+        request.setPower(appliance.getPower());
+        request.setDescription(appliance.getDescription());
+        if (appliance.getManufacturer() != null) {
+            request.setManufacturerId(appliance.getManufacturer().getId());
+        }
+
+        model.addAttribute("appliance", request);
+        model.addAttribute("manufacturers", manufacturerService.getAll());
+        return "appliance/editAppliance";
+    }
+
+    @PostMapping("/{id}/edit")
+    public String updateAppliance(@PathVariable Long id,
+                                  @Valid @ModelAttribute("appliance") UpdateApplianceRequest request,
+                                  BindingResult result,
+                                  Model model) {
+        if (result.hasErrors()) {
+            model.addAttribute("manufacturers", manufacturerService.getAll());
+            return "appliance/editAppliance";
+        }
+        applianceService.update(id, request);
         return "redirect:/appliances";
     }
 
