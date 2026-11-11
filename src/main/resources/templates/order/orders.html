@@ -19,6 +19,9 @@
 </header>
 <main>
     <h1 th:text="#{orders.header.list}">Orders list</h1>
+    <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}">
+        Cannot approve an empty order.
+    </div>
     <table class="table table-hover">
         <thead>
         <tr class="table-dark">

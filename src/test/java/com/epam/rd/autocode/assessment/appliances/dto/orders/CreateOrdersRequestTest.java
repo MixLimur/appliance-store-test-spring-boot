@@ -1,5 +1,6 @@
 package com.epam.rd.autocode.assessment.appliances.dto.orders;
 
+import com.epam.rd.autocode.assessment.appliances.dto.orderRow.CreateOrderRowRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.DisplayName;
@@ -53,6 +54,7 @@ class CreateOrdersRequestTest {
         request.setClientId(5L);
         request.setEmployeeId(2L);
         request.setApproved(true);
+        request.setOrderRowSet(Set.of(new CreateOrderRowRequest()));
         return request;
     }
 

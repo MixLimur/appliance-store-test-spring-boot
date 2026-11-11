@@ -8,12 +8,16 @@ import com.epam.rd.autocode.assessment.appliances.service.ApplianceService;
 import com.epam.rd.autocode.assessment.appliances.service.ClientService;
 import com.epam.rd.autocode.assessment.appliances.service.EmployeeService;
 import com.epam.rd.autocode.assessment.appliances.service.OrderService;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Valid;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
 import java.util.Set;
@@ -28,6 +32,7 @@ public class OrdersController {
     private final ClientService clientService;
     private final EmployeeService employeeService;
     private final ApplianceService applianceService;
+    private final Validator validator;
 
 
     @GetMapping()
@@ -48,7 +53,7 @@ public class OrdersController {
 
     @PostMapping("/add-order")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
-    public String addOrder(@ModelAttribute("order") CreateOrdersRequest request, BindingResult result,
+    public String addOrder(@Valid @ModelAttribute("order") CreateOrdersRequest request, BindingResult result,
                            Model model) {
         if (result.hasErrors()) {
             model.addAttribute("clients", clientService.getAll());
@@ -69,8 +74,19 @@ public class OrdersController {
 
     @GetMapping("/{id}/approved")
     @PreAuthorize("hasRole('EMPLOYEE')")
-    public String approveOrder(@PathVariable Long id) {
-        setApprovalStatus(id, true);
+    public String approveOrder(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        OrdersResponse existingOrder = orderService.getById(id);
+        UpdateOrdersRequest updateRequest = mapToUpdateRequest(existingOrder);
+        updateRequest.setApproved(true);
+
+        Set<ConstraintViolation<UpdateOrdersRequest>> violations = validator.validate(updateRequest);
+        if (!violations.isEmpty()) {
+            String errorMessage = violations.iterator().next().getMessage();
+            redirectAttributes.addFlashAttribute("errorMessage", errorMessage);
+            return "redirect:/orders";
+        }
+
+        orderService.update(id, updateRequest);
         return "redirect:/orders";
     }
 

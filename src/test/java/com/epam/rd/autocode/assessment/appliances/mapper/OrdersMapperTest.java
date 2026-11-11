@@ -18,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -67,7 +68,7 @@ class OrdersMapperTest {
         entity.setApproved(true);
         entity.setClient(client);
         entity.setEmployee(employee);
-        entity.setOrderRowSet(Set.of(orderRow));
+        entity.setOrderRowSet(new HashSet<>(Set.of(orderRow)));
 
         createRequest = new CreateOrdersRequest();
         createRequest.setClientId(5L);
@@ -147,6 +148,21 @@ class OrdersMapperTest {
     void updateEntityFromRequest_ValidUpdateRequest_UpdatesEntity() {
         ordersMapper.updateEntityFromRequest(updateRequest, entity, client, employee, Set.of(orderRow));
 
+        assertFalse(entity.getApproved());
+        assertEquals(client, entity.getClient());
+        assertEquals(employee, entity.getEmployee());
+    }
+
+    @Test
+    @DisplayName("Should set orderRowSet directly when entity orderRowSet is null")
+    void updateEntityFromRequest_NullEntityOrderRowSet_SetsOrderRowSet() {
+        entity.setOrderRowSet(null);
+        Set<OrderRow> newOrderRows = Set.of(orderRow);
+
+        ordersMapper.updateEntityFromRequest(updateRequest, entity, client, employee, newOrderRows);
+
+        assertNotNull(entity.getOrderRowSet());
+        assertEquals(newOrderRows, entity.getOrderRowSet());
         assertFalse(entity.getApproved());
         assertEquals(client, entity.getClient());
         assertEquals(employee, entity.getEmployee());

@@ -1,6 +1,8 @@
 package com.epam.rd.autocode.assessment.appliances.dto.orders;
 
 import com.epam.rd.autocode.assessment.appliances.dto.orderRow.UpdateOrderRowRequest;
+import com.epam.rd.autocode.assessment.appliances.validation.ApprovableOrder;
+import com.epam.rd.autocode.assessment.appliances.validation.ValidOrderApproval;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -8,7 +10,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Data
-public class UpdateOrdersRequest {
+@ValidOrderApproval
+public class UpdateOrdersRequest implements ApprovableOrder {
 
     @NotNull
     private Long id;
