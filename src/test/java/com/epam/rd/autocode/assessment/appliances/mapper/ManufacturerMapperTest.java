@@ -1,6 +1,5 @@
 package com.epam.rd.autocode.assessment.appliances.mapper;
 
-import com.epam.rd.autocode.assessment.appliances.dto.ManufacturerDto;
 import com.epam.rd.autocode.assessment.appliances.dto.manufacturer.CreateManufacturerRequest;
 import com.epam.rd.autocode.assessment.appliances.dto.manufacturer.ManufacturerResponse;
 import com.epam.rd.autocode.assessment.appliances.dto.manufacturer.UpdateManufacturerRequest;

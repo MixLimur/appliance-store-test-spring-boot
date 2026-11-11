@@ -1,6 +1,5 @@
 package com.epam.rd.autocode.assessment.appliances.controller;
 
-import com.epam.rd.autocode.assessment.appliances.dto.ApplianceDto;
 import com.epam.rd.autocode.assessment.appliances.dto.appliance.CreateApplianceRequest;
 import com.epam.rd.autocode.assessment.appliances.model.Category;
 import com.epam.rd.autocode.assessment.appliances.model.PowerType;

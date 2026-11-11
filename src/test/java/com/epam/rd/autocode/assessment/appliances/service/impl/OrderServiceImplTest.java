@@ -1,8 +1,5 @@
 package com.epam.rd.autocode.assessment.appliances.service.impl;
 
-import com.epam.rd.autocode.assessment.appliances.dto.ClientDto;
-import com.epam.rd.autocode.assessment.appliances.dto.EmployeeDto;
-import com.epam.rd.autocode.assessment.appliances.dto.OrdersDto;
 import com.epam.rd.autocode.assessment.appliances.dto.client.ClientResponse;
 import com.epam.rd.autocode.assessment.appliances.dto.employee.EmployeeResponse;
 import com.epam.rd.autocode.assessment.appliances.dto.orderRow.UpdateOrderRowRequest;

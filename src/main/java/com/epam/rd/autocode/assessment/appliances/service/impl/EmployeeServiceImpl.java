@@ -1,6 +1,5 @@
 package com.epam.rd.autocode.assessment.appliances.service.impl;
 
-import com.epam.rd.autocode.assessment.appliances.dto.EmployeeDto;
 import com.epam.rd.autocode.assessment.appliances.dto.employee.CreateEmployeeRequest;
 import com.epam.rd.autocode.assessment.appliances.dto.employee.EmployeeResponse;
 import com.epam.rd.autocode.assessment.appliances.dto.employee.UpdateEmployeeRequest;
@@ -15,7 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor

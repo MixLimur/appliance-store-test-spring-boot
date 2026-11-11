@@ -1,6 +1,5 @@
 package com.epam.rd.autocode.assessment.appliances.controller;
 
-import com.epam.rd.autocode.assessment.appliances.dto.EmployeeDto;
 import com.epam.rd.autocode.assessment.appliances.dto.employee.CreateEmployeeRequest;
 import com.epam.rd.autocode.assessment.appliances.service.EmployeeService;
 import jakarta.validation.Valid;

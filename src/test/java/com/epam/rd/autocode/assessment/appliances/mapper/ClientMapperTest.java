@@ -1,11 +1,9 @@
 package com.epam.rd.autocode.assessment.appliances.mapper;
 
-import com.epam.rd.autocode.assessment.appliances.dto.ClientDto;
 import com.epam.rd.autocode.assessment.appliances.dto.client.ClientResponse;
 import com.epam.rd.autocode.assessment.appliances.dto.client.CreateClientRequest;
 import com.epam.rd.autocode.assessment.appliances.dto.client.UpdateClientRequest;
 import com.epam.rd.autocode.assessment.appliances.model.Client;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;

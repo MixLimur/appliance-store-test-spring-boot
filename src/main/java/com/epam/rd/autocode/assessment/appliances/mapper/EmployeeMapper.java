@@ -1,13 +1,8 @@
 package com.epam.rd.autocode.assessment.appliances.mapper;
 
-import com.epam.rd.autocode.assessment.appliances.dto.EmployeeDto;
-import com.epam.rd.autocode.assessment.appliances.dto.client.ClientResponse;
-import com.epam.rd.autocode.assessment.appliances.dto.client.CreateClientRequest;
-import com.epam.rd.autocode.assessment.appliances.dto.client.UpdateClientRequest;
 import com.epam.rd.autocode.assessment.appliances.dto.employee.CreateEmployeeRequest;
 import com.epam.rd.autocode.assessment.appliances.dto.employee.EmployeeResponse;
 import com.epam.rd.autocode.assessment.appliances.dto.employee.UpdateEmployeeRequest;
-import com.epam.rd.autocode.assessment.appliances.model.Client;
 import com.epam.rd.autocode.assessment.appliances.model.Employee;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;

@@ -1,6 +1,5 @@
 package com.epam.rd.autocode.assessment.appliances.mapper;
 
-import com.epam.rd.autocode.assessment.appliances.dto.OrderRowDto;
 import com.epam.rd.autocode.assessment.appliances.dto.orderRow.CreateOrderRowRequest;
 import com.epam.rd.autocode.assessment.appliances.dto.orderRow.OrderRowResponse;
 import com.epam.rd.autocode.assessment.appliances.dto.orderRow.UpdateOrderRowRequest;

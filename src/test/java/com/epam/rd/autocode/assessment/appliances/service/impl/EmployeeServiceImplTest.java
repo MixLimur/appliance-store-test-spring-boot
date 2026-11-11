@@ -1,14 +1,11 @@
 package com.epam.rd.autocode.assessment.appliances.service.impl;
 
-import com.epam.rd.autocode.assessment.appliances.dto.ClientDto;
-import com.epam.rd.autocode.assessment.appliances.dto.EmployeeDto;
 import com.epam.rd.autocode.assessment.appliances.dto.employee.CreateEmployeeRequest;
 import com.epam.rd.autocode.assessment.appliances.dto.employee.EmployeeResponse;
 import com.epam.rd.autocode.assessment.appliances.dto.employee.UpdateEmployeeRequest;
 import com.epam.rd.autocode.assessment.appliances.exception.DuplicateEmailException;
 import com.epam.rd.autocode.assessment.appliances.exception.ResourceNotFoundException;
 import com.epam.rd.autocode.assessment.appliances.mapper.EmployeeMapper;
-import com.epam.rd.autocode.assessment.appliances.model.Client;
 import com.epam.rd.autocode.assessment.appliances.model.Employee;
 import com.epam.rd.autocode.assessment.appliances.repository.EmployeeRepository;
 import org.junit.jupiter.api.BeforeEach;

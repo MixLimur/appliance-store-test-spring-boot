@@ -1,13 +1,10 @@
 package com.epam.rd.autocode.assessment.appliances.service;
 
-import com.epam.rd.autocode.assessment.appliances.dto.ApplianceDto;
-import com.epam.rd.autocode.assessment.appliances.dto.EmployeeDto;
 import com.epam.rd.autocode.assessment.appliances.dto.appliance.ApplianceResponse;
 import com.epam.rd.autocode.assessment.appliances.dto.appliance.CreateApplianceRequest;
 import com.epam.rd.autocode.assessment.appliances.dto.appliance.UpdateApplianceRequest;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface ApplianceService {
     List<ApplianceResponse> getAll();

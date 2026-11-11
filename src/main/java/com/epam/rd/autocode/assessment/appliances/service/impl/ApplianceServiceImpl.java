@@ -1,6 +1,5 @@
 package com.epam.rd.autocode.assessment.appliances.service.impl;
 
-import com.epam.rd.autocode.assessment.appliances.dto.ApplianceDto;
 import com.epam.rd.autocode.assessment.appliances.dto.appliance.ApplianceResponse;
 import com.epam.rd.autocode.assessment.appliances.dto.appliance.CreateApplianceRequest;
 import com.epam.rd.autocode.assessment.appliances.dto.appliance.UpdateApplianceRequest;
