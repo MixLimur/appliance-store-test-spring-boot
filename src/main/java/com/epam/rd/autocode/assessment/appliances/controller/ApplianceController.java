@@ -81,6 +81,7 @@ public class ApplianceController {
         request.setModel(appliance.getModel());
         request.setPrice(appliance.getPrice());
         request.setPower(appliance.getPower());
+        request.setPowerType(appliance.getPowerType());
         request.setDescription(appliance.getDescription());
         if (appliance.getManufacturer() != null) {
             request.setManufacturerId(appliance.getManufacturer().getId());
@@ -88,6 +89,8 @@ public class ApplianceController {
 
         model.addAttribute("appliance", request);
         model.addAttribute("manufacturers", manufacturerService.getAll());
+        model.addAttribute("categories", Category.values());
+        model.addAttribute("powerTypes", PowerType.values());
         return "appliance/editAppliance";
     }
 
@@ -96,8 +99,12 @@ public class ApplianceController {
                                   @Valid @ModelAttribute("appliance") UpdateApplianceRequest request,
                                   BindingResult result,
                                   Model model) {
+        request.setId(id);
+
         if (result.hasErrors()) {
             model.addAttribute("manufacturers", manufacturerService.getAll());
+            model.addAttribute("categories", Category.values());
+            model.addAttribute("powerTypes", PowerType.values());
             return "appliance/editAppliance";
         }
         applianceService.update(id, request);

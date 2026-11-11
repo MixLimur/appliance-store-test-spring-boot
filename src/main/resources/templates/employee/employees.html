@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <!-- Latest compiled and minified CSS -->
@@ -33,14 +34,13 @@
             <td th:text="${employee.name}"/>
             <td th:text="${employee.email}"/>
             <td th:text="${employee.department}"/>
-            <td>
-                <div>
-                    <a th:href="@{employees/}+${employee.id}+@{/delete}" class="text-danger">
-                    <span class="icon">
-                          <i class="fa fa-times"></i>
-                    </span>
-                    </a>
-                </div>
+            <td sec:authorize="hasRole('EMPLOYEE')">
+                <a th:href="@{/employees/{id}/delete(id=${employee.id})}" class="text-danger me-2">
+                    <i class="fa fa-times"></i>
+                </a>
+                <a th:href="@{/employees/{id}/edit(id=${employee.id})}">
+                    <i class="fa fa-edit"></i>
+                </a>
             </td>
         </tr>
 
