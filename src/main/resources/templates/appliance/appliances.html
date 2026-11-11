@@ -16,6 +16,9 @@
 </header>
 <main>
     <h1 th:text="#{appliance.header.list}">Appliances list</h1>
+    <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}">
+        Cannot delete entity.
+    </div>
     <table class="table table-hover">
         <thead>
         <tr class="table-dark">

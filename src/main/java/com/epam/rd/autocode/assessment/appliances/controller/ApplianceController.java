@@ -7,6 +7,8 @@ import com.epam.rd.autocode.assessment.appliances.service.ApplianceService;
 import com.epam.rd.autocode.assessment.appliances.service.ManufacturerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -21,6 +23,7 @@ public class ApplianceController {
 
     private final ApplianceService applianceService;
     private final ManufacturerService manufacturerService;
+    private final MessageSource messageSource;
 
     @GetMapping()
     @PreAuthorize("hasRole('EMPLOYEE')")
@@ -55,7 +58,12 @@ public class ApplianceController {
         try {
             applianceService.delete(id);
         } catch (IllegalStateException ex) {
-            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+            String localizedMessage = messageSource.getMessage(
+                    "error.appliance.delete.referenced",
+                    null,
+                    LocaleContextHolder.getLocale()
+            );
+            redirectAttributes.addFlashAttribute("errorMessage", localizedMessage);
         }
         return "redirect:/appliances";
     }

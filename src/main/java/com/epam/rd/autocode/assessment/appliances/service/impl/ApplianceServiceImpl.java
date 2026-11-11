@@ -11,6 +11,7 @@ import com.epam.rd.autocode.assessment.appliances.repository.ApplianceRepository
 import com.epam.rd.autocode.assessment.appliances.repository.ManufacturerRepository;
 import com.epam.rd.autocode.assessment.appliances.service.ApplianceService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -69,6 +70,11 @@ public class ApplianceServiceImpl implements ApplianceService {
         if (!applianceRepository.existsById(id)) {
             throw new ResourceNotFoundException("Appliance not found with id: " + id);
         }
-        applianceRepository.deleteById(id);
+        try {
+            applianceRepository.deleteById(id);
+            applianceRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalStateException("error.appliance.delete.referenced");
+        }
     }
 }

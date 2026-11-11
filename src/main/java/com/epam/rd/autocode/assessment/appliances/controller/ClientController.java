@@ -4,11 +4,14 @@ import com.epam.rd.autocode.assessment.appliances.dto.client.CreateClientRequest
 import com.epam.rd.autocode.assessment.appliances.service.ClientService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/clients")
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class ClientController {
 
     private final ClientService clientService;
+    private final MessageSource messageSource;
 
     @GetMapping()
     @PreAuthorize("hasRole('EMPLOYEE')")
@@ -44,8 +48,17 @@ public class ClientController {
 
     @GetMapping("/{id}/delete")
     @PreAuthorize("hasRole('EMPLOYEE')")
-    public String deleteClient(@PathVariable Long id) {
-        clientService.delete(id);
+    public String deleteClient(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            clientService.delete(id);
+        } catch (IllegalStateException ex) {
+            String localizedMessage = messageSource.getMessage(
+                    "error.client.delete.referenced",
+                    null,
+                    LocaleContextHolder.getLocale()
+            );
+            redirectAttributes.addFlashAttribute("errorMessage", localizedMessage);
+        }
         return "redirect:/clients";
     }
 

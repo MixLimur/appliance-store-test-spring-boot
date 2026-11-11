@@ -10,6 +10,7 @@ import com.epam.rd.autocode.assessment.appliances.model.Client;
 import com.epam.rd.autocode.assessment.appliances.repository.ClientRepository;
 import com.epam.rd.autocode.assessment.appliances.service.ClientService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -74,7 +75,12 @@ public class ClientServiceImpl implements ClientService {
         if (!clientRepository.existsById(id)) {
             throw new ResourceNotFoundException("Client not found with id: " + id);
         }
-        clientRepository.deleteById(id);
+        try {
+            clientRepository.deleteById(id);
+            clientRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalStateException("error.client.delete.referenced");
+        }
     }
 
     @Override

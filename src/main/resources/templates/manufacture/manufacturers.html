@@ -12,7 +12,7 @@
 </head>
 <body>
 <div th:insert="~{menunavy::navy}"></div>
-<h1 th:text="#{manufacturer.header.list}">
+<h1 th:text="#{manufacturer.header.list}"></h1>
     <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}">
         Cannot delete entity.
     </div>

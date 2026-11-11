@@ -4,11 +4,14 @@ import com.epam.rd.autocode.assessment.appliances.dto.employee.CreateEmployeeReq
 import com.epam.rd.autocode.assessment.appliances.service.EmployeeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/employees")
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class EmployeeController {
 
     private final EmployeeService employeeService;
+    private final MessageSource messageSource;
 
     @GetMapping()
     @PreAuthorize("hasRole('EMPLOYEE')")
@@ -44,8 +48,17 @@ public class EmployeeController {
 
     @GetMapping("/{id}/delete")
     @PreAuthorize("hasRole('EMPLOYEE')")
-    public String deleteEmployee(@PathVariable Long id) {
-        employeeService.delete(id);
+    public String deleteEmployee(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            employeeService.delete(id);
+        } catch (IllegalStateException ex) {
+            String localizedMessage = messageSource.getMessage(
+                    "error.employee.delete.referenced",
+                    null,
+                    LocaleContextHolder.getLocale()
+            );
+            redirectAttributes.addFlashAttribute("errorMessage", localizedMessage);
+        }
         return "redirect:/employees";
     }
 
