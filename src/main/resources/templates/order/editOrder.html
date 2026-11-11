@@ -35,10 +35,13 @@
         </tr>
         </tbody>
     </table>
-    <div>
+    <div th:unless="${order.approved}">
         <a th:href="@{/orders/{id}/choice-appliance(id=${order.id})}">Add
             <i class="fa fa-plus-square-o"></i>
         </a>
+    </div>
+    <div th:if="${order.approved}" class="alert alert-info mt-3">
+        This order is approved and locked for modifications.
     </div>
 </div>
 

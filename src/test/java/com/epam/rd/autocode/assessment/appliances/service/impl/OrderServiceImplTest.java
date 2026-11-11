@@ -76,6 +76,7 @@ class OrderServiceImplTest {
         order = new Orders();
         order.setId(10L);
         order.setClient(client);
+        order.setApproved(false);
 
         createRequest = new CreateOrdersRequest();
         createRequest.setClientId(1L);
@@ -228,6 +229,20 @@ class OrderServiceImplTest {
     }
 
     @Test
+    @DisplayName("update() should throw IllegalStateException when Order is approved")
+    void update_WhenOrderApproved_ShouldThrowIllegalStateException() {
+        order.setApproved(true);
+        when(ordersRepository.findById(10L)).thenReturn(Optional.of(order));
+        when(clientRepository.findById(1L)).thenReturn(Optional.of(client));
+        when(employeeRepository.findById(2L)).thenReturn(Optional.of(employee));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> service.update(10L, updateRequest));
+        assertEquals("Cannot modify an approved order with id: 10", ex.getMessage());
+
+        verify(ordersRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("update() should throw exception when Appliance in row is not found")
     void update_WhenApplianceInRowNotFound_ShouldThrowException() {
         UpdateOrderRowRequest rowRequest = new UpdateOrderRowRequest();
@@ -295,24 +310,37 @@ class OrderServiceImplTest {
     }
 
     @Test
-    @DisplayName("delete() should delete order when found")
+    @DisplayName("delete() should delete order when found and not approved")
     void delete_WhenFound_ShouldDelete() {
-        when(ordersRepository.existsById(10L)).thenReturn(true);
+        when(ordersRepository.findById(10L)).thenReturn(Optional.of(order));
 
         assertDoesNotThrow(() -> service.delete(10L));
 
-        verify(ordersRepository).existsById(10L);
+        verify(ordersRepository).findById(10L);
         verify(ordersRepository).deleteById(10L);
+    }
+
+    @Test
+    @DisplayName("delete() should throw IllegalStateException when Order is approved")
+    void delete_WhenOrderApproved_ShouldThrowIllegalStateException() {
+        order.setApproved(true);
+        when(ordersRepository.findById(10L)).thenReturn(Optional.of(order));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> service.delete(10L));
+        assertEquals("Cannot delete an approved order with id: 10", ex.getMessage());
+
+        verify(ordersRepository).findById(10L);
+        verify(ordersRepository, never()).deleteById(anyLong());
     }
 
     @Test
     @DisplayName("delete() should throw exception when Order not found")
     void delete_WhenNotFound_ShouldThrowException() {
-        when(ordersRepository.existsById(99L)).thenReturn(false);
+        when(ordersRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> service.delete(99L));
 
-        verify(ordersRepository).existsById(99L);
+        verify(ordersRepository).findById(99L);
         verify(ordersRepository, never()).deleteById(anyLong());
     }
 }

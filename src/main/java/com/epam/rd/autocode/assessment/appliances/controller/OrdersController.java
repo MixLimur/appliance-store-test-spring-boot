@@ -12,6 +12,8 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Valid;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -33,6 +35,7 @@ public class OrdersController {
     private final EmployeeService employeeService;
     private final ApplianceService applianceService;
     private final Validator validator;
+    private final MessageSource messageSource;
 
 
     @GetMapping()
@@ -119,17 +122,28 @@ public class OrdersController {
     public String addApplianceIntoOrder(@RequestParam Long ordersId,
                                         @RequestParam Long applianceId,
                                         @RequestParam Long numbers,
-                                        @RequestParam BigDecimal price) {
-        OrdersResponse existingOrder = orderService.getById(ordersId);
-        UpdateOrdersRequest updateRequest = mapToUpdateRequest(existingOrder);
+                                        @RequestParam BigDecimal price,
+                                        RedirectAttributes redirectAttributes) {
 
-        UpdateOrderRowRequest newRow = new UpdateOrderRowRequest();
-        newRow.setApplianceId(applianceId);
-        newRow.setNumber(numbers);
-        newRow.setAmount(price.multiply(BigDecimal.valueOf(numbers)));
+        try {
+            OrdersResponse existingOrder = orderService.getById(ordersId);
+            UpdateOrdersRequest updateRequest = mapToUpdateRequest(existingOrder);
 
-        updateRequest.getOrderRowSet().add(newRow);
-        orderService.update(ordersId, updateRequest);
+            UpdateOrderRowRequest newRow = new UpdateOrderRowRequest();
+            newRow.setApplianceId(applianceId);
+            newRow.setNumber(numbers);
+            newRow.setAmount(price.multiply(BigDecimal.valueOf(numbers)));
+
+            updateRequest.getOrderRowSet().add(newRow);
+            orderService.update(ordersId, updateRequest);
+        } catch (IllegalStateException ex) {
+            String localizedMessage = messageSource.getMessage(
+                    "error.orders.approved.modify",
+                    null,
+                    LocaleContextHolder.getLocale()
+            );
+            redirectAttributes.addFlashAttribute("errorMessage", localizedMessage);
+        }
 
         return "redirect:/orders/" + ordersId + "/edit";
     }

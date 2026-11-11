@@ -81,6 +81,10 @@ public class OrderServiceImpl implements OrderService {
                     .orElseThrow(() -> new ResourceNotFoundException("Cannot update order. Employee not found with id: " + employeeId));
         }
 
+        if (Boolean.TRUE.equals(existingOrder.getApproved())) {
+            throw new IllegalStateException("Cannot modify an approved order with id: " + id);
+        }
+
         Set<OrderRow> updatedOrderRows = Collections.emptySet();
         if (request.getOrderRowSet() != null) {
             updatedOrderRows = request.getOrderRowSet().stream()
@@ -106,8 +110,11 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public void delete(Long id) {
-        if (!ordersRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Order not found with id: " + id);
+        Orders existingOrder = ordersRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
+
+        if (Boolean.TRUE.equals(existingOrder.getApproved())) {
+            throw new IllegalStateException("Cannot delete an approved order with id: " + id);
         }
         ordersRepository.deleteById(id);
     }

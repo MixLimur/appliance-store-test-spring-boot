@@ -65,16 +65,21 @@
             </td>
             <td><span class="float-end" th:text="${order.amount}"/></td>
             <td>
-                <div>
-                    <a th:href="@{orders/}+${order.id}+@{/delete}">
-                        <i class="fa fa-times"></i>
-                    </a>
-                </div>
-                <div>
-                    <a th:href="@{orders/}+${order.id}+@{/edit}">
-                        <i class="fa fa-edit"></i>
-                    </a>
-                </div>
+                <th:block th:unless="${order.approved}">
+                    <div>
+                        <a th:href="@{orders/}+${order.id}+@{/delete}">
+                            <i class="fa fa-times"></i>
+                        </a>
+                    </div>
+                    <div>
+                        <a th:href="@{orders/}+${order.id}+@{/edit}">
+                            <i class="fa fa-edit"></i>
+                        </a>
+                    </div>
+                </th:block>
+                <th:block th:if="${order.approved}">
+                    <span class="text-muted"><i class="fa fa-lock"></i></span>
+                </th:block>
 
             </td>
         </tr>
