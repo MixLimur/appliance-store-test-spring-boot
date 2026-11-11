@@ -1,6 +1,7 @@
 package com.epam.rd.autocode.assessment.appliances.controller;
 
 import com.epam.rd.autocode.assessment.appliances.dto.ApplianceDto;
+import com.epam.rd.autocode.assessment.appliances.dto.appliance.CreateApplianceRequest;
 import com.epam.rd.autocode.assessment.appliances.model.Category;
 import com.epam.rd.autocode.assessment.appliances.model.PowerType;
 import com.epam.rd.autocode.assessment.appliances.service.ApplianceService;
@@ -34,20 +35,20 @@ public class ApplianceController {
     @GetMapping("/add")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public String showAddForm(Model model) {
-        model.addAttribute("appliance", new ApplianceDto());
+        model.addAttribute("appliance", new CreateApplianceRequest());
         populateDropdowns(model);
         return "appliance/newAppliance";
     }
 
     @PostMapping("/add-appliance")
     @PreAuthorize("hasRole('EMPLOYEE')")
-    public String addAppliance(@Valid @ModelAttribute("appliance") ApplianceDto applianceDto,
+    public String addAppliance(@Valid @ModelAttribute("appliance") CreateApplianceRequest request,
                                BindingResult result, Model model) {
         if (result.hasErrors()) {
             populateDropdowns(model);
             return "appliance/newAppliance";
         }
-        applianceService.create(applianceDto);
+        applianceService.create(request);
         return "redirect:/appliances";
     }
 

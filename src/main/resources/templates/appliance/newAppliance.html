@@ -35,12 +35,12 @@
     </p>
 
     <p>
-    <p th:if="${#fields.hasErrors('manufacturer')}" class="text-danger">Invalid manufacturer</p>
+    <p th:if="${#fields.hasErrors('manufacturerId')}" class="text-danger">Invalid manufacturer</p>
     <span th:text="#{object.appliance.manufacturer}"></span>
 
-    <select th:field="*{manufacturer}">
-        <option th:each="manufacturer : ${manufacturers}" th:value="${manufacturer.getId()}"
-                th:text="${manufacturer.getName()}"></option>
+    <select th:field="*{manufacturerId}">
+        <option th:each="manufacturer : ${manufacturers}" th:value="${manufacturer.id}"
+                th:text="${manufacturer.name}"></option>
     </select>
     </p>
     <p>

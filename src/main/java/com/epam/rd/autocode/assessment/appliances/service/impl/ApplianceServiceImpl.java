@@ -1,6 +1,9 @@
 package com.epam.rd.autocode.assessment.appliances.service.impl;
 
 import com.epam.rd.autocode.assessment.appliances.dto.ApplianceDto;
+import com.epam.rd.autocode.assessment.appliances.dto.appliance.ApplianceResponse;
+import com.epam.rd.autocode.assessment.appliances.dto.appliance.CreateApplianceRequest;
+import com.epam.rd.autocode.assessment.appliances.dto.appliance.UpdateApplianceRequest;
 import com.epam.rd.autocode.assessment.appliances.exception.ResourceNotFoundException;
 import com.epam.rd.autocode.assessment.appliances.mapper.ApplianceMapper;
 import com.epam.rd.autocode.assessment.appliances.model.Appliance;
@@ -22,54 +25,44 @@ public class ApplianceServiceImpl implements ApplianceService {
     private final ApplianceMapper applianceMapper;
 
     @Override
-    public List<ApplianceDto> getAll() {
+    public List<ApplianceResponse> getAll() {
         return applianceRepository.findAll().stream()
-                .map(applianceMapper::toDto)
+                .map(applianceMapper::toResponse)
                 .toList();
     }
 
     @Override
-    public ApplianceDto getById(Long id) {
-        Appliance appliance = applianceRepository.findById(id)
+    public ApplianceResponse getById(Long id) {
+        return applianceRepository.findById(id)
+                .map(applianceMapper::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("Appliance not found with id: " + id));
-        return applianceMapper.toDto(appliance);
     }
 
     @Override
-    public ApplianceDto create(ApplianceDto dto) {
+    public ApplianceResponse create(CreateApplianceRequest request) {
 
-        Long manufacturerId = dto.getManufacturer().getId();
+        Long manufacturerId = request.getManufacturerId();
         Manufacturer manufacturer = manufacturerRepository.findById(manufacturerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cannot create appliance. Manufacturer not found with id: " + manufacturerId));
 
-        Appliance appliance = applianceMapper.toEntity(dto);
-        appliance.setId(null);
-
+        Appliance appliance = applianceMapper.toEntity(request, manufacturer);
         Appliance savedAppliance = applianceRepository.save(appliance);
-        return applianceMapper.toDto(savedAppliance);
+        return applianceMapper.toResponse(savedAppliance);
     }
 
     @Override
-    public ApplianceDto update(Long id, ApplianceDto dto) {
-        Appliance existingAppliance = applianceRepository.findById(id)
+    public ApplianceResponse update(Long id, UpdateApplianceRequest request) {
+        Appliance appliance = applianceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Appliance not found with id: " + id));
 
-        Long manufacturerId = dto.getManufacturer().getId();
+        Long manufacturerId = request.getManufacturerId();
         Manufacturer manufacturer = manufacturerRepository.findById(manufacturerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cannot update appliance. Manufacturer not found with id: " + manufacturerId));
 
-        existingAppliance.setName(dto.getName());
-        existingAppliance.setCategory(dto.getCategory());
-        existingAppliance.setModel(dto.getModel());
-        existingAppliance.setManufacturer(manufacturer);
-        existingAppliance.setPowerType(dto.getPowerType());
-        existingAppliance.setCharacteristic(dto.getCharacteristic());
-        existingAppliance.setDescription(dto.getDescription());
-        existingAppliance.setPower(dto.getPower());
-        existingAppliance.setPrice(dto.getPrice());
+        applianceMapper.updateEntityFromRequest(request, appliance, manufacturer);
 
-        Appliance updatedAppliance = applianceRepository.save(existingAppliance);
-        return applianceMapper.toDto(updatedAppliance);
+        Appliance updatedAppliance = applianceRepository.save(appliance);
+        return applianceMapper.toResponse(updatedAppliance);
     }
 
     @Override
