@@ -245,4 +245,18 @@ public class OrdersController {
         }
         return "redirect:/orders/" + orderId + "/edit";
     }
+
+    @PostMapping("/{orderId}/row/{rowId}/update")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
+    public String updateOrderRowNumber(@PathVariable Long orderId,
+                                       @PathVariable Long rowId,
+                                       @RequestParam("number") Long number,
+                                       RedirectAttributes redirectAttributes) {
+        try {
+            orderService.updateOrderRowNumber(orderId, rowId, number);
+        } catch (IllegalStateException | IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return "redirect:/orders/" + orderId + "/edit";
+    }
 }

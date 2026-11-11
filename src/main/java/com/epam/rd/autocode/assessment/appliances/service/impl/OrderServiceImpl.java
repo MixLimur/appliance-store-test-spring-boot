@@ -149,5 +149,33 @@ public class OrderServiceImpl implements OrderService {
         existingOrder.getOrderRowSet().removeIf(row -> row.getId().equals(rowId));
         ordersRepository.save(existingOrder);
     }
+
+    @Override
+    @Transactional
+    public void updateOrderRowNumber(Long orderId, Long rowId, Long number) {
+        if (number == null || number < 1) {
+            throw new IllegalArgumentException("Quantity must be at least 1");
+        }
+
+        Orders existingOrder = ordersRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+
+        if (Boolean.TRUE.equals(existingOrder.getApproved())) {
+            throw new IllegalStateException("Cannot modify an approved order with id: " + orderId);
+        }
+
+        OrderRow targetRow = existingOrder.getOrderRowSet().stream()
+                .filter(row -> row.getId().equals(rowId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Order row not found with id: " + rowId));
+
+        targetRow.setNumber(number);
+
+        if (targetRow.getAppliance() != null && targetRow.getAppliance().getPrice() != null) {
+            targetRow.setAmount(targetRow.getAppliance().getPrice().multiply(java.math.BigDecimal.valueOf(number)));
+        }
+
+        ordersRepository.save(existingOrder);
+    }
 }
 

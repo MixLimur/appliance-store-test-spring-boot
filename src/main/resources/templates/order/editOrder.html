@@ -35,7 +35,20 @@
         <tr th:each="row: ${rows}">
             <td th:text="${row.id}"/>
             <td th:text="${row.appliance.name}"/>
-            <td th:text="${row.number}"/>
+            <td>
+                <!-- Якщо замовлення НЕ затверджене: інлайн-форма зміни кількості -->
+                <form th:unless="${order.approved}"
+                      th:action="@{/orders/{orderId}/row/{rowId}/update(orderId=${order.id}, rowId=${row.id})}"
+                      method="post" class="d-flex align-items-center gap-1" style="max-width: 150px;">
+                    <input type="number" name="number" th:value="${row.number}" min="1" class="form-control form-control-sm" required/>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary" title="Update quantity">
+                        <i class="fa fa-refresh"></i>
+                    </button>
+                </form>
+
+                <span th:if="${order.approved}" th:text="${row.number}"></span>
+            </td>
+
             <td th:text="${row.amount}"/>
             <td>
                 <div th:unless="${order.approved}">
@@ -45,6 +58,9 @@
                               <i class="fa fa-times"></i>
                         </span>
                     </a>
+                </div>
+                <div th:if="${order.approved}">
+                    <span class="text-muted"><i class="fa fa-lock"></i></span>
                 </div>
             </td>
         </tr>

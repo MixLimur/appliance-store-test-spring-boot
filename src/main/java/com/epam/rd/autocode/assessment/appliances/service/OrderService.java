@@ -14,4 +14,5 @@ public interface OrderService {
     void delete(Long id);
     void assignEmployee(Long orderId, String employeeEmail);
     void deleteOrderRow(Long orderId, Long rowId);
+    void updateOrderRowNumber(Long orderId, Long rowId, Long number);
 }
