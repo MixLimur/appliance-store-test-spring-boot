@@ -118,5 +118,22 @@ public class OrderServiceImpl implements OrderService {
         }
         ordersRepository.deleteById(id);
     }
+
+    @Override
+    @Transactional
+    public void assignEmployee(Long orderId, String employeeEmail) {
+        Orders existingOrder = ordersRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+
+        if (Boolean.TRUE.equals(existingOrder.getApproved())) {
+            throw new IllegalStateException("Cannot modify an approved order with id: " + orderId);
+        }
+
+        Employee employee = employeeRepository.findByEmail(employeeEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with email: " + employeeEmail));
+
+        existingOrder.setEmployee(employee);
+        ordersRepository.save(existingOrder);
+    }
 }
 

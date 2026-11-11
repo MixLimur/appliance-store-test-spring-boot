@@ -16,7 +16,10 @@
 <div th:object="${order}">
     <p><span th:text="#{object.order.id}"></span> <input type="text" th:field="*{id}" disabled/></p>
     <p><span th:text="#{object.order.client}"></span> <input type="text" th:field="*{client.name}" disabled/></p>
-    <p><span th:text="#{object.order.employee}"></span> <input type="text" th:field="*{employee.name}" disabled/></p>
+    <p>
+        <span th:text="#{object.order.employee}">Employee</span>
+        <input type="text" th:value="${order.employee?.name}" disabled/>
+    </p>
     <table class="table table-hover">
         <thead>
         <tr class="table-dark">

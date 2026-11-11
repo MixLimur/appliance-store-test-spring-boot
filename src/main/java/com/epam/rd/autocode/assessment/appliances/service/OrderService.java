@@ -12,4 +12,5 @@ public interface OrderService {
     OrdersResponse create(CreateOrdersRequest request);
     OrdersResponse update(Long id, UpdateOrdersRequest request);
     void delete(Long id);
+    void assignEmployee(Long orderId, String employeeEmail);
 }

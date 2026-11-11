@@ -37,7 +37,14 @@
         <tr th:each="order: ${orders}">
             <td><span class="float-end" th:text="${order.id}"/></td>
             <td><span class="float-end" th:text="${order.client.name}"/></td>
-            <td><span class="float-end" th:text="${order.employee.name}"/></td>
+            <td><span class="float-end" th:text="${order.employee?.name}"/>
+                <th:block sec:authorize="hasRole('EMPLOYEE')">
+                    <div th:if="${order.employee == null and !order.approved}">
+                        <a th:href="@{/orders/{id}/assign-self(id=${order.id})}" class="btn btn-sm btn-outline-primary">
+                            Assign to me
+                        </a>
+                    </div>
+                </th:block></td>
             <td>
                 <th:block sec:authorize="hasRole('EMPLOYEE')">
                     <div th:if="${order.approved}">

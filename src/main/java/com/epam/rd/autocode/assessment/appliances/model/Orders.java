@@ -21,7 +21,7 @@ public class Orders {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(nullable = false)
+    @JoinColumn()
     private Employee employee;
 
     @ManyToOne

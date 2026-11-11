@@ -12,4 +12,5 @@ public interface EmployeeService {
     EmployeeResponse create(CreateEmployeeRequest dto);
     EmployeeResponse update(Long id, UpdateEmployeeRequest dto);
     void delete(Long id);
+    EmployeeResponse getByEmail(String email);
 }

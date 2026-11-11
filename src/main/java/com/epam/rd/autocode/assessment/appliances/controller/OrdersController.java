@@ -1,5 +1,6 @@
 package com.epam.rd.autocode.assessment.appliances.controller;
 
+import com.epam.rd.autocode.assessment.appliances.dto.employee.EmployeeResponse;
 import com.epam.rd.autocode.assessment.appliances.dto.orderRow.UpdateOrderRowRequest;
 import com.epam.rd.autocode.assessment.appliances.dto.orders.CreateOrdersRequest;
 import com.epam.rd.autocode.assessment.appliances.dto.orders.OrdersResponse;
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -50,20 +52,30 @@ public class OrdersController {
     public String showAddForm(Model model) {
         model.addAttribute("order", new CreateOrdersRequest());
         model.addAttribute("clients", clientService.getAll());
-        model.addAttribute("employees", employeeService.getAll());
         return "order/newOrder";
     }
 
     @PostMapping("/add-order")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
     public String addOrder(@Valid @ModelAttribute("order") CreateOrdersRequest request, BindingResult result,
+                           Authentication authentication,
                            Model model) {
         if (result.hasErrors()) {
             model.addAttribute("clients", clientService.getAll());
-            model.addAttribute("employees", employeeService.getAll());
             return "order/newOrder";
         }
         request.setApproved(false);
+
+        boolean isEmployee = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_EMPLOYEE"));
+
+        if (isEmployee) {
+            EmployeeResponse currentEmployee = employeeService.getByEmail(authentication.getName());
+            request.setEmployeeId(currentEmployee.getId());
+        } else {
+            request.setEmployeeId(null);
+        }
+
         orderService.create(request);
         return "redirect:/orders";
     }
@@ -177,5 +189,19 @@ public class OrdersController {
         }
 
         return request;
+    }
+
+    @GetMapping("/{id}/assign-self")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public String assignSelfToOrder(@PathVariable Long id,
+                                    Authentication authentication,
+                                    RedirectAttributes redirectAttributes) {
+        try {
+            String currentEmployeeEmail = authentication.getName();
+            orderService.assignEmployee(id, currentEmployeeEmail);
+        } catch (IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return "redirect:/orders";
     }
 }
