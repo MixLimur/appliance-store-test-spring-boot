@@ -32,9 +32,9 @@
         <td th:text="${client.card}"/>
         <td>
             <div>
-                <a th:href="@{clients/}+${client.id}+@{/delete}">
+                <a th:href="@{clients/}+${client.id}+@{/delete}" class="text-danger">
                     <span class="icon">
-                          <i class="fa fa-minus"></i>
+                        <i class="fa fa-times"></i>
                     </span>
                 </a>
             </div>

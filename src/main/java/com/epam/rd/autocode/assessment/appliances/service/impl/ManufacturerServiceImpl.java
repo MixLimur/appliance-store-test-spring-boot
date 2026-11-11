@@ -9,6 +9,7 @@ import com.epam.rd.autocode.assessment.appliances.model.Manufacturer;
 import com.epam.rd.autocode.assessment.appliances.repository.ManufacturerRepository;
 import com.epam.rd.autocode.assessment.appliances.service.ManufacturerService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,6 +62,11 @@ public class ManufacturerServiceImpl implements ManufacturerService {
         if (!manufacturerRepository.existsById(id)) {
             throw new ResourceNotFoundException("Manufacturer not found with id: " + id);
         }
-        manufacturerRepository.deleteById(id);
+        try {
+            manufacturerRepository.deleteById(id);
+            manufacturerRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalStateException("error.manufacturer.delete.referenced");
+        }
     }
 }
