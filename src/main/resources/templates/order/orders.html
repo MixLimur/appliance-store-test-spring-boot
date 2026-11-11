@@ -3,96 +3,138 @@
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
-    <!-- Latest compiled and minified CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- Latest compiled JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <link th:href="@{/styles/css/main.css}" rel="stylesheet"/>
-    <title>Title</title>
+    <title>Orders</title>
 </head>
 <body>
 <header>
     <div th:insert="~{menunavy::navy}"></div>
 </header>
-<main>
+<main class="container mt-4">
     <h1 th:text="#{orders.header.list}">Orders list</h1>
-    <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}">
-        Cannot approve an empty order.
-    </div>
-    <table class="table table-hover">
+
+    <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
+
+    <!-- ПОШУК -->
+    <form th:action="@{/orders}" method="get" class="row g-3 mb-3">
+        <input type="hidden" name="sortField" th:value="${sortField}"/>
+        <input type="hidden" name="sortDir" th:value="${sortDir}"/>
+        <input type="hidden" name="size" th:value="${size}"/>
+
+        <div class="col-auto">
+            <input type="text" name="keyword" th:value="${keyword}" class="form-control" placeholder="Search orders..."/>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary"><i class="fa fa-search"></i> Search</button>
+            <a th:href="@{/orders}" class="btn btn-outline-secondary">Clear</a>
+        </div>
+    </form>
+
+    <!-- ТАБЛИЦЯ -->
+    <table class="table table-hover align-middle">
         <thead>
         <tr class="table-dark">
-            <th>ID</th>
-            <th>Client</th>
-            <th>Employee</th>
+            <!-- 1. Сортування за ID -->
+            <th>
+                <a th:href="@{/orders(page=${currentPage}, size=${size}, sortField='id', sortDir=${sortField == 'id' ? reverseSortDir : 'asc'}, keyword=${keyword})}"
+                   class="text-white text-decoration-none">
+                    ID <i th:if="${sortField == 'id'}" th:class="${sortDir == 'asc' ? 'fa fa-sort-asc' : 'fa fa-sort-desc'}"></i>
+                </a>
+            </th>
+
+            <!-- 2. Сортування за іменем клієнта (вкладене поле client.name) -->
+            <th>
+                <a th:href="@{/orders(page=${currentPage}, size=${size}, sortField='client.name', sortDir=${sortField == 'client.name' ? reverseSortDir : 'asc'}, keyword=${keyword})}"
+                   class="text-white text-decoration-none">
+                    Client <i th:if="${sortField == 'client.name'}" th:class="${sortDir == 'asc' ? 'fa fa-sort-asc' : 'fa fa-sort-desc'}"></i>
+                </a>
+            </th>
+
+            <!-- 3. Сортування за іменем співробітника (вкладене поле employee.name) -->
+            <th>
+                <a th:href="@{/orders(page=${currentPage}, size=${size}, sortField='employee.name', sortDir=${sortField == 'employee.name' ? reverseSortDir : 'asc'}, keyword=${keyword})}"
+                   class="text-white text-decoration-none">
+                    Employee <i th:if="${sortField == 'employee.name'}" th:class="${sortDir == 'asc' ? 'fa fa-sort-asc' : 'fa fa-sort-desc'}"></i>
+                </a>
+            </th>
+
             <th>Approved</th>
-            <th>Amount</th>
+
+            <!-- 4. Сортування за сумою замовлення (поле amount) -->
+            <th>
+                <a th:href="@{/orders(page=${currentPage}, size=${size}, sortField='amount', sortDir=${sortField == 'amount' ? reverseSortDir : 'asc'}, keyword=${keyword})}"
+                   class="text-white text-decoration-none">
+                    Amount <i th:if="${sortField == 'amount'}" th:class="${sortDir == 'asc' ? 'fa fa-sort-asc' : 'fa fa-sort-desc'}"></i>
+                </a>
+            </th>
             <th>Operation</th>
         </tr>
         </thead>
         <tbody>
         <tr th:each="order: ${orders}">
-            <td><span class="float-end" th:text="${order.id}"/></td>
-            <td><span class="float-end" th:text="${order.client.name}"/></td>
-            <td><span class="float-end" th:text="${order.employee?.name}"/>
+            <td th:text="${order.id}"></td>
+            <td th:text="${order.client.name}"></td>
+            <td>
+                <span th:text="${order.employee?.name}"></span>
                 <th:block sec:authorize="hasRole('EMPLOYEE')">
                     <div th:if="${order.employee == null and !order.approved}">
-                        <a th:href="@{/orders/{id}/assign-self(id=${order.id})}" class="btn btn-sm btn-outline-primary">
-                            Assign to me
-                        </a>
+                        <a th:href="@{/orders/{id}/assign-self(id=${order.id})}" class="btn btn-sm btn-outline-primary">Assign to me</a>
                     </div>
-                </th:block></td>
+                </th:block>
+            </td>
             <td>
                 <th:block sec:authorize="hasRole('EMPLOYEE')">
-                    <div th:if="${order.approved}">
-                        <a th:href="@{orders/}+${order.id}+@{/unapproved}">
-                          <span class="icon">
-                            <i class="fa fa-check"></i>
-                          </span>
-
-                        </a>
-                    </div>
-                    <!-- ELSE -->
-                    <div th:unless="${order.approved}">
-                        <a th:href="@{orders/}+${order.id}+@{/approved}">
-                        <span class="icon">
-                              <i class="fa fa-minus"></i>
-                        </span>
-
-                        </a>
-                    </div>
+                    <a th:if="${order.approved}" th:href="@{/orders/}+${order.id}+@{/unapproved}">
+                        <span class="icon"><i class="fa fa-check"></i></span>
+                    </a>
+                    <a th:unless="${order.approved}" th:href="@{/orders/}+${order.id}+@{/approved}" class="text-danger">
+                        <span class="icon"><i class="fa fa-minus"></i></span>
+                    </a>
                 </th:block>
                 <th:block sec:authorize="hasRole('CLIENT')">
                     <span th:if="${order.approved}" class="badge bg-success">Approved</span>
                     <span th:unless="${order.approved}" class="badge bg-warning">Pending</span>
                 </th:block>
             </td>
-            <td><span class="float-end" th:text="${order.amount}"/></td>
+            <td th:text="${order.amount}"></td>
             <td>
                 <th:block th:unless="${order.approved}">
-                    <div>
-                        <a th:href="@{orders/}+${order.id}+@{/delete}" class="text-danger">
-                            <i class="fa fa-times"></i>
-                        </a>
-                    </div>
-                    <div>
-                        <a th:href="@{orders/}+${order.id}+@{/edit}">
-                            <i class="fa fa-edit"></i>
-                        </a>
-                    </div>
+                    <a th:href="@{/orders/}+${order.id}+@{/delete}" class="text-danger me-2"><i class="fa fa-times"></i></a>
+                    <a th:href="@{/orders/}+${order.id}+@{/edit}"><i class="fa fa-edit"></i></a>
                 </th:block>
                 <th:block th:if="${order.approved}">
                     <span class="text-muted"><i class="fa fa-lock"></i></span>
                 </th:block>
-
             </td>
         </tr>
         </tbody>
     </table>
-    <a th:href="@{orders/add}" class="btn btn-primary" th:text="#{orders.btn.new}"></a>
+
+    <div class="mb-3">
+        <a th:href="@{/orders/add}" class="btn btn-primary" th:text="#{orders.btn.new}">New order</a>
+    </div>
+
+    <!-- ПАГІНАЦІЯ -->
+    <nav th:if="${totalPages > 1}" class="d-flex justify-content-between align-items-center">
+        <div>
+            Total items: <span th:text="${totalItems}"></span> | Page <span th:text="${currentPage + 1}"></span> of <span th:text="${totalPages}"></span>
+        </div>
+        <ul class="pagination mb-0">
+            <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                <a class="page-link" th:href="@{/orders(page=${currentPage - 1}, size=${size}, sortField=${sortField}, sortDir=${sortDir}, keyword=${keyword})}">Previous</a>
+            </li>
+            <li class="page-item" th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+                th:classappend="${i == currentPage} ? 'active'">
+                <a class="page-link" th:href="@{/orders(page=${i}, size=${size}, sortField=${sortField}, sortDir=${sortDir}, keyword=${keyword})}" th:text="${i + 1}">1</a>
+            </li>
+            <li class="page-item" th:classappend="${currentPage == totalPages - 1} ? 'disabled'">
+                <a class="page-link" th:href="@{/orders(page=${currentPage + 1}, size=${size}, sortField=${sortField}, sortDir=${sortDir}, keyword=${keyword})}">Next</a>
+            </li>
+        </ul>
+    </nav>
 </main>
 <div th:insert="~{footer::footer}"></div>
 </body>

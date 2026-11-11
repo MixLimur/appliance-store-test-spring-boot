@@ -16,6 +16,7 @@ import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -43,8 +44,31 @@ public class OrdersController {
 
     @GetMapping()
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
-    public String listOrders(Model model) {
-        model.addAttribute("orders", orderService.getAll());
+    public String getAllOrders(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "id") String sortField,
+            @RequestParam(defaultValue = "desc") String sortDir,
+            @RequestParam(required = false) String keyword,
+            Authentication authentication,
+            Model model) {
+
+        boolean isEmployee = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_EMPLOYEE"));
+
+        Page<OrdersResponse> pageResult = orderService.getAll(
+                page, size, sortField, sortDir, keyword, authentication.getName(), isEmployee);
+
+        model.addAttribute("orders", pageResult.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", pageResult.getTotalPages());
+        model.addAttribute("totalItems", pageResult.getTotalElements());
+        model.addAttribute("size", size);
+        model.addAttribute("sortField", sortField);
+        model.addAttribute("sortDir", sortDir);
+        model.addAttribute("reverseSortDir", sortDir.equals("asc") ? "desc" : "asc");
+        model.addAttribute("keyword", keyword);
+
         return "order/orders";
     }
 

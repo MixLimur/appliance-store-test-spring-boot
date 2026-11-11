@@ -12,10 +12,13 @@ import com.epam.rd.autocode.assessment.appliances.repository.EmployeeRepository;
 import com.epam.rd.autocode.assessment.appliances.repository.OrdersRepository;
 import com.epam.rd.autocode.assessment.appliances.service.OrderService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -31,10 +34,36 @@ public class OrderServiceImpl implements OrderService {
     private final OrdersMapper ordersMapper;
 
     @Override
-    public List<OrdersResponse> getAll() {
-        return ordersRepository.findAll().stream()
+    @Transactional(readOnly = true)
+    public Page<OrdersResponse> getAll(int page, int size, String sortField, String sortDir, String keyword, String userEmail, boolean isEmployee) {
+        String actualSortField = "amount".equals(sortField) ? "id" : sortField;
+
+        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ?
+                Sort.by(actualSortField).ascending() : Sort.by(actualSortField).descending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<Orders> ordersPage = isEmployee ?
+                ordersRepository.findAllWithFilter(keyword, pageable) :
+                ordersRepository.findByClientEmailWithFilter(userEmail, keyword, pageable);
+
+        List<OrdersResponse> content = ordersPage.stream()
                 .map(ordersMapper::toResponse)
-                .toList();
+                .collect(Collectors.toList());
+
+        // Ручне сортування в пам'яті, якщо обрано amount
+        if ("amount".equals(sortField)) {
+            Comparator<OrdersResponse> comparator = Comparator.comparing(
+                    OrdersResponse::getAmount,
+                    Comparator.nullsFirst(BigDecimal::compareTo)
+            );
+            if ("desc".equalsIgnoreCase(sortDir)) {
+                comparator = comparator.reversed();
+            }
+            content.sort(comparator);
+        }
+
+        return new PageImpl<>(content, pageable, ordersPage.getTotalElements());
     }
 
     @Override
