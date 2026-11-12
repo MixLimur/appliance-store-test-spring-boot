@@ -13,36 +13,34 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class UserDetailsServiceImpl implements UserDetailsService {
 
+    private static final String ROLE_EMPLOYEE = "ROLE_EMPLOYEE";
+    private static final String ROLE_CLIENT = "ROLE_CLIENT";
+
     private final EmployeeRepository employeeRepository;
     private final ClientRepository clientRepository;
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        Optional<Employee> employee = employeeRepository.findByEmail(email);
-        if (employee.isPresent()) {
-            return new User(
-                    employee.get().getEmail(),
-                    employee.get().getPassword(),
-                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_EMPLOYEE"))
-            );
-        }
+        return employeeRepository.findByEmail(email)
+                .map(employee -> buildUserDetails(employee.getEmail(), employee.getPassword(), ROLE_EMPLOYEE))
+                .or(() -> clientRepository.findByEmail(email)
+                        .map(client -> buildUserDetails(client.getEmail(), client.getPassword(), ROLE_CLIENT)))
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+    }
 
-        Optional<Client> client = clientRepository.findByEmail(email);
-        if (client.isPresent()) {
-            return new User(
-                    client.get().getEmail(),
-                    client.get().getPassword(),
-                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_CLIENT"))
-            );
-        }
-
-        throw new UsernameNotFoundException("User not found with email: " + email);
+    private UserDetails buildUserDetails(String email, String password, String role) {
+        return new User(
+                email,
+                password,
+                List.of(new SimpleGrantedAuthority(role))
+        );
     }
 
 }
