@@ -1,82 +1,90 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-    <!-- Latest compiled and minified CSS -->
+    <meta charset="UTF-8">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-
-    <!-- Latest compiled JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <title>Manufacturers list</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link th:href="@{/styles/css/main.css}" rel="stylesheet"/>
+    <title th:text="#{order.menu.name}">Orders</title>
 </head>
 <body>
-<div th:insert="~{menunavy::navy}"></div>
-<h1>Edit order</h1>
+<header>
+    <div th:insert="~{menunavy::navy}"></div>
+</header>
+<main class="container mt-4">
+    <h1 th:text="#{order.menu.name}">Orders</h1>
 
-<div th:object="${order}">
-    <p><span th:text="#{object.order.id}"></span> <input type="text" th:field="*{id}" disabled/></p>
-    <p><span th:text="#{object.order.client}"></span> <input type="text" th:field="*{client.name}" disabled/></p>
-    <p>
-        <span th:text="#{object.order.employee}">Employee</span>
-        <input type="text" th:value="${order.employee?.name}" disabled/>
-    </p>
-    <table class="table table-hover">
-        <thead>
-        <tr class="table-dark">
-            <th th:text="id"></th>
-            <th th:text="Appliance"></th>
-            <th th:text="Number"></th>
-            <th th:text="Price"></th>
-            <th>Operation</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="row: ${rows}">
-            <td th:text="${row.id}"/>
-            <td th:text="${row.appliance.name}"/>
-            <td>
-                <!-- Якщо замовлення НЕ затверджене: інлайн-форма зміни кількості -->
-                <form th:unless="${order.approved}"
-                      th:action="@{/orders/{orderId}/row/{rowId}/update(orderId=${order.id}, rowId=${row.id})}"
-                      method="post" class="d-flex align-items-center gap-1" style="max-width: 150px;">
-                    <input type="number" name="number" th:value="${row.number}" min="1" class="form-control form-control-sm" required/>
-                    <button type="submit" class="btn btn-sm btn-outline-secondary" title="Update quantity">
-                        <i class="fa fa-refresh"></i>
-                    </button>
-                </form>
+    <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
 
-                <span th:if="${order.approved}" th:text="${row.number}"></span>
-            </td>
+    <div th:object="${order}">
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <label class="form-label" th:text="#{object.order.id}">Order ID</label>
+                <input type="text" class="form-control" th:field="*{id}" disabled/>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" th:text="#{object.order.client}">Client</label>
+                <input type="text" class="form-control" th:field="*{client.name}" disabled/>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" th:text="#{object.order.employee}">Employee</label>
+                <input type="text" class="form-control" th:value="${order.employee?.name}" disabled/>
+            </div>
+        </div>
 
-            <td th:text="${row.amount}"/>
-            <td>
-                <div th:unless="${order.approved}">
-                    <a th:href="@{/orders/{orderId}/row/{rowId}/delete(orderId=${order.id}, rowId=${row.id})}"
-                       class="text-danger">
-                        <span class="icon">
-                              <i class="fa fa-times"></i>
-                        </span>
-                    </a>
-                </div>
-                <div th:if="${order.approved}">
-                    <span class="text-muted"><i class="fa fa-lock"></i></span>
-                </div>
-            </td>
-        </tr>
-        </tbody>
-    </table>
-    <div th:unless="${order.approved}">
-        <a th:href="@{/orders/{id}/choice-appliance(id=${order.id})}">Add
-            <i class="fa fa-plus-square-o"></i>
-        </a>
+        <table class="table table-hover align-middle">
+            <thead>
+            <tr class="table-dark">
+                <th th:text="#{object.appliance.id}">ID</th>
+                <th th:text="#{object.appliance.name}">Appliance</th>
+                <th><i class="fa fa-hashtag"></i></th>
+                <th th:text="#{object.appliance.price}">Price</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="row: ${rows}">
+                <td th:text="${row.id}"/>
+                <td th:text="${row.appliance.name}"/>
+                <td>
+                    <form th:unless="${order.approved}"
+                          th:action="@{/orders/{orderId}/row/{rowId}/update(orderId=${order.id}, rowId=${row.id})}"
+                          method="post" class="d-flex align-items-center gap-1" style="max-width: 150px;">
+                        <input type="number" name="number" th:value="${row.number}" min="1" class="form-control form-control-sm" required/>
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">
+                            <i class="fa fa-refresh"></i>
+                        </button>
+                    </form>
+                    <span th:if="${order.approved}" th:text="${row.number}"></span>
+                </td>
+                <td th:text="${row.amount}"/>
+                <td>
+                    <div th:unless="${order.approved}">
+                        <a th:href="@{/orders/{orderId}/row/{rowId}/delete(orderId=${order.id}, rowId=${row.id})}" class="text-danger">
+                            <i class="fa fa-times"></i>
+                        </a>
+                    </div>
+                    <div th:if="${order.approved}">
+                        <span class="text-muted"><i class="fa fa-lock"></i></span>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+
+        <div th:if="${order.approved}" class="alert alert-info mt-3" th:text="#{error.orders.approved.modify}"></div>
+
+        <div class="btn-group mt-2">
+            <a th:unless="${order.approved}" th:href="@{/orders/{id}/choice-appliance(id=${order.id})}" class="btn btn-success">
+                <i class="fa fa-plus"></i>
+            </a>
+            <a th:href="@{/orders}" class="btn btn-secondary">
+                <i class="fa fa-arrow-left"></i>
+            </a>
+        </div>
     </div>
-    <div th:if="${order.approved}" class="alert alert-info mt-3">
-        This order is approved and locked for modifications.
-    </div>
-</div>
-
-
+</main>
 <div th:insert="~{footer::footer}"></div>
 </body>
 </html>

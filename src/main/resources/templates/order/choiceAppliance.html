@@ -2,31 +2,101 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <!-- Latest compiled and minified CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- Latest compiled JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <title>Title</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link th:href="@{/styles/css/main.css}" rel="stylesheet"/>
+    <title th:text="#{appliance.header.list}">Appliances</title>
 </head>
 <body>
 <header>
     <div th:insert="~{menunavy::navy}"></div>
 </header>
-<main>
+<main class="container mt-4">
     <h1 th:text="#{appliance.header.list}">Appliances list</h1>
 
-    <th:block th:each="appliance: ${appliances}">
-        <form class="store-form" th:action="@{/orders/add-into-order}" method="post">
-            <input type="hidden" th:value="${ordersId}" th:name="ordersId">
-            <input type="hidden" th:value="${appliance.id}" th:name="applianceId">
-            <span th:text="${appliance.name}" />
-            <input type="number" min="1" name="numbers" placeholder="Quantity" class="form-control w-25" required/>
-            <input type="hidden" name="price" th:value="${appliance.price}"/>
-            <input type="submit" value="Add">
-        </form>
-    </th:block>
-    <a th:href="@{/orders}" class="btn btn-primary">To orders</a>
+    <form th:action="@{/orders/{id}/choice-appliance(id=${ordersId})}" method="get" class="row g-3 mb-3">
+        <input type="hidden" name="sortField" th:value="${sortField}"/>
+        <input type="hidden" name="sortDir" th:value="${sortDir}"/>
+        <input type="hidden" name="size" th:value="${size}"/>
+
+        <div class="col-auto">
+            <input type="text" name="keyword" th:value="${keyword}" class="form-control"/>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary"><i class="fa fa-search"></i></button>
+            <a th:href="@{/orders/{id}/choice-appliance(id=${ordersId})}" class="btn btn-outline-secondary">X</a>
+        </div>
+    </form>
+
+    <table class="table table-hover align-middle">
+        <thead>
+        <tr class="table-dark">
+            <th>
+                <a th:href="@{/orders/{id}/choice-appliance(id=${ordersId}, page=${currentPage}, size=${size}, sortField='name', sortDir=${sortField == 'name' ? reverseSortDir : 'asc'}, keyword=${keyword})}"
+                   class="text-white text-decoration-none">
+                    <span th:text="#{object.appliance.name}">Name</span>
+                    <i th:if="${sortField == 'name'}" th:class="${sortDir == 'asc' ? 'fa fa-sort-asc' : 'fa fa-sort-desc'}"></i>
+                </a>
+            </th>
+            <th>
+                <a th:href="@{/orders/{id}/choice-appliance(id=${ordersId}, page=${currentPage}, size=${size}, sortField='model', sortDir=${sortField == 'model' ? reverseSortDir : 'asc'}, keyword=${keyword})}"
+                   class="text-white text-decoration-none">
+                    <span th:text="#{object.appliance.model}">Model</span>
+                    <i th:if="${sortField == 'model'}" th:class="${sortDir == 'asc' ? 'fa fa-sort-asc' : 'fa fa-sort-desc'}"></i>
+                </a>
+            </th>
+            <th>
+                <a th:href="@{/orders/{id}/choice-appliance(id=${ordersId}, page=${currentPage}, size=${size}, sortField='price', sortDir=${sortField == 'price' ? reverseSortDir : 'asc'}, keyword=${keyword})}"
+                   class="text-white text-decoration-none">
+                    <span th:text="#{object.appliance.price}">Price</span>
+                    <i th:if="${sortField == 'price'}" th:class="${sortDir == 'asc' ? 'fa fa-sort-asc' : 'fa fa-sort-desc'}"></i>
+                </a>
+            </th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="appliance: ${appliances}">
+            <td th:text="${appliance.name}"></td>
+            <td th:text="${appliance.model}"></td>
+            <td th:text="${appliance.price}"></td>
+            <td>
+                <form th:action="@{/orders/add-into-order}" method="post" class="d-flex align-items-center gap-2" style="max-width: 200px;">
+                    <input type="hidden" th:value="${ordersId}" name="ordersId"/>
+                    <input type="hidden" th:value="${appliance.id}" name="applianceId"/>
+                    <input type="hidden" name="price" th:value="${appliance.price}"/>
+                    <input type="number" min="1" value="1" name="numbers" class="form-control form-control-sm" required/>
+                    <button type="submit" class="btn btn-sm btn-primary"><i class="fa fa-plus"></i></button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div class="mb-3">
+        <a th:href="@{/orders/{id}/edit(id=${ordersId})}" class="btn btn-secondary">
+            <i class="fa fa-arrow-left"></i>
+        </a>
+    </div>
+
+    <nav th:if="${totalPages > 1}" class="d-flex justify-content-between align-items-center">
+        <div>
+            <span th:text="${currentPage + 1}">1</span> / <span th:text="${totalPages}">1</span>
+        </div>
+        <ul class="pagination mb-0">
+            <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                <a class="page-link" th:href="@{/orders/{id}/choice-appliance(id=${ordersId}, page=${currentPage - 1}, size=${size}, sortField=${sortField}, sortDir=${sortDir}, keyword=${keyword})}">&laquo;</a>
+            </li>
+            <li class="page-item" th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+                th:classappend="${i == currentPage} ? 'active'">
+                <a class="page-link" th:href="@{/orders/{id}/choice-appliance(id=${ordersId}, page=${i}, size=${size}, sortField=${sortField}, sortDir=${sortDir}, keyword=${keyword})}" th:text="${i + 1}">1</a>
+            </li>
+            <li class="page-item" th:classappend="${currentPage == totalPages - 1} ? 'disabled'">
+                <a class="page-link" th:href="@{/orders/{id}/choice-appliance(id=${ordersId}, page=${currentPage + 1}, size=${size}, sortField=${sortField}, sortDir=${sortDir}, keyword=${keyword})}">&raquo;</a>
+            </li>
+        </ul>
+    </nav>
 </main>
 <div th:insert="~{footer::footer}"></div>
 </body>

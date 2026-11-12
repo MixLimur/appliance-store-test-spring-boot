@@ -1,7 +1,9 @@
 package com.epam.rd.autocode.assessment.appliances.controller;
 
+import com.epam.rd.autocode.assessment.appliances.dto.appliance.ApplianceResponse;
 import com.epam.rd.autocode.assessment.appliances.dto.client.ClientResponse;
 import com.epam.rd.autocode.assessment.appliances.dto.employee.EmployeeResponse;
+import com.epam.rd.autocode.assessment.appliances.dto.orderRow.OrderRowResponse;
 import com.epam.rd.autocode.assessment.appliances.dto.orderRow.UpdateOrderRowRequest;
 import com.epam.rd.autocode.assessment.appliances.dto.orders.CreateOrdersRequest;
 import com.epam.rd.autocode.assessment.appliances.dto.orders.OrdersResponse;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -34,6 +37,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class OrdersController {
 
+    private static final int DROPDOWN_PAGE_SIZE = 1000;
+    private static final String ROLE_EMPLOYEE = "ROLE_EMPLOYEE";
+    private static final String ROLE_CLIENT = "ROLE_CLIENT";
+
     private final OrderService orderService;
     private final ClientService clientService;
     private final EmployeeService employeeService;
@@ -41,8 +48,7 @@ public class OrdersController {
     private final Validator validator;
     private final MessageSource messageSource;
 
-
-    @GetMapping()
+    @GetMapping
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
     public String getAllOrders(
             @RequestParam(defaultValue = "0") int page,
@@ -53,22 +59,11 @@ public class OrdersController {
             Authentication authentication,
             Model model) {
 
-        boolean isEmployee = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_EMPLOYEE"));
-
+        boolean isEmployee = hasRole(authentication, ROLE_EMPLOYEE);
         Page<OrdersResponse> pageResult = orderService.getAll(
                 page, size, sortField, sortDir, keyword, authentication.getName(), isEmployee);
 
-        model.addAttribute("orders", pageResult.getContent());
-        model.addAttribute("currentPage", page);
-        model.addAttribute("totalPages", pageResult.getTotalPages());
-        model.addAttribute("totalItems", pageResult.getTotalElements());
-        model.addAttribute("size", size);
-        model.addAttribute("sortField", sortField);
-        model.addAttribute("sortDir", sortDir);
-        model.addAttribute("reverseSortDir", sortDir.equals("asc") ? "desc" : "asc");
-        model.addAttribute("keyword", keyword);
-
+        populatePagingModel(model, pageResult, page, size, sortField, sortDir, keyword);
         return "order/orders";
     }
 
@@ -76,54 +71,25 @@ public class OrdersController {
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
     public String showAddForm(Model model, Authentication authentication) {
         CreateOrdersRequest request = new CreateOrdersRequest();
-
-        boolean isClient = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_CLIENT"));
-
-        if (isClient) {
+        if (hasRole(authentication, ROLE_CLIENT)) {
             ClientResponse currentClient = clientService.getByEmail(authentication.getName());
             request.setClientId(currentClient.getId());
-            model.addAttribute("currentClientName", currentClient.getName());
-        } else {
-            model.addAttribute("clients", clientService.getAll(0, 1000,"id", "asc","").getContent());
         }
-
+        populateOrderFormModel(model, authentication);
         model.addAttribute("order", request);
         return "order/newOrder";
     }
 
     @PostMapping("/add-order")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
-    public String addOrder(@Valid @ModelAttribute("order") CreateOrdersRequest request, BindingResult result,
+    public String addOrder(@Valid @ModelAttribute("order") CreateOrdersRequest request,
+                           BindingResult result,
                            Authentication authentication,
                            Model model) {
-        if (result.hasErrors()) {
-            model.addAttribute("clients", clientService.getAll(0, 1000, "id", "asc", ""));
-            return "order/newOrder";
-        }
-
-        boolean isClient = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_CLIENT"));
-
-        boolean isEmployee = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_EMPLOYEE"));
-
-        if (isClient) {
-            ClientResponse currentClient = clientService.getByEmail(authentication.getName());
-            request.setClientId(currentClient.getId());
-            request.setEmployeeId(null);
-        } else if (isEmployee) {
-            EmployeeResponse currentEmployee = employeeService.getByEmail(authentication.getName());
-            request.setEmployeeId(currentEmployee.getId());
-        }
+        resolveOrderParticipants(request, authentication);
 
         if (result.hasErrors()) {
-            if (!isClient) {
-                model.addAttribute("clients", clientService.getAll(0, 1000, "id", "asc", ""));
-            } else {
-                ClientResponse currentClient = clientService.getByEmail(authentication.getName());
-                model.addAttribute("currentClientName", currentClient.getName());
-            }
+            populateOrderFormModel(model, authentication);
             return "order/newOrder";
         }
 
@@ -134,8 +100,12 @@ public class OrdersController {
 
     @GetMapping("/{id}/delete")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
-    public String deleteOrder(@PathVariable Long id) {
-        orderService.delete(id);
+    public String deleteOrder(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            orderService.delete(id);
+        } catch (IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", getLocalizedMessage("error.orders.approved.delete"));
+        }
         return "redirect:/orders";
     }
 
@@ -148,8 +118,7 @@ public class OrdersController {
 
         Set<ConstraintViolation<UpdateOrdersRequest>> violations = validator.validate(updateRequest);
         if (!violations.isEmpty()) {
-            String errorMessage = violations.iterator().next().getMessage();
-            redirectAttributes.addFlashAttribute("errorMessage", errorMessage);
+            redirectAttributes.addFlashAttribute("errorMessage", violations.iterator().next().getMessage());
             return "redirect:/orders";
         }
 
@@ -175,9 +144,28 @@ public class OrdersController {
 
     @GetMapping("/{id}/choice-appliance")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
-    public String showChoiceApplianceForm(@PathVariable Long id, Model model) {
+    public String showChoiceApplianceForm(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "id") String sortField,
+            @RequestParam(defaultValue = "asc") String sortDir,
+            @RequestParam(required = false) String keyword,
+            Model model) {
+
+        Page<ApplianceResponse> pageResult = applianceService.getAll(page, size, sortField, sortDir, keyword);
+
         model.addAttribute("ordersId", id);
-        model.addAttribute("appliances", applianceService.getAll(0, 1000, "id", "asc", "").getContent());
+        model.addAttribute("appliances", pageResult.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", pageResult.getTotalPages());
+        model.addAttribute("totalItems", pageResult.getTotalElements());
+        model.addAttribute("size", size);
+        model.addAttribute("sortField", sortField);
+        model.addAttribute("sortDir", sortDir);
+        model.addAttribute("reverseSortDir", sortDir.equalsIgnoreCase("asc") ? "desc" : "asc");
+        model.addAttribute("keyword", keyword);
+
         return "order/choiceAppliance";
     }
 
@@ -188,28 +176,95 @@ public class OrdersController {
                                         @RequestParam Long numbers,
                                         @RequestParam BigDecimal price,
                                         RedirectAttributes redirectAttributes) {
-
         try {
             OrdersResponse existingOrder = orderService.getById(ordersId);
             UpdateOrdersRequest updateRequest = mapToUpdateRequest(existingOrder);
-
-            UpdateOrderRowRequest newRow = new UpdateOrderRowRequest();
-            newRow.setApplianceId(applianceId);
-            newRow.setNumber(numbers);
-            newRow.setAmount(price.multiply(BigDecimal.valueOf(numbers)));
-
-            updateRequest.getOrderRowSet().add(newRow);
+            updateRequest.getOrderRowSet().add(createOrderRowRequest(applianceId, numbers, price));
             orderService.update(ordersId, updateRequest);
         } catch (IllegalStateException ex) {
-            String localizedMessage = messageSource.getMessage(
-                    "error.orders.approved.modify",
-                    null,
-                    LocaleContextHolder.getLocale()
-            );
-            redirectAttributes.addFlashAttribute("errorMessage", localizedMessage);
+            redirectAttributes.addFlashAttribute("errorMessage", getLocalizedMessage("error.orders.approved.modify"));
         }
-
         return "redirect:/orders/" + ordersId + "/edit";
+    }
+
+    @GetMapping("/{id}/assign-self")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public String assignSelfToOrder(@PathVariable Long id,
+                                    Authentication authentication,
+                                    RedirectAttributes redirectAttributes) {
+        try {
+            orderService.assignEmployee(id, authentication.getName());
+        } catch (IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", getLocalizedMessage("error.orders.approved.modify"));
+        }
+        return "redirect:/orders";
+    }
+
+    @GetMapping("/{orderId}/row/{rowId}/delete")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
+    public String deleteOrderRow(@PathVariable Long orderId,
+                                 @PathVariable Long rowId,
+                                 RedirectAttributes redirectAttributes) {
+        try {
+            orderService.deleteOrderRow(orderId, rowId);
+        } catch (IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", getLocalizedMessage("error.orders.approved.modify"));
+        }
+        return "redirect:/orders/" + orderId + "/edit";
+    }
+
+    @PostMapping("/{orderId}/row/{rowId}/update")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
+    public String updateOrderRowNumber(@PathVariable Long orderId,
+                                       @PathVariable Long rowId,
+                                       @RequestParam("number") Long number,
+                                       RedirectAttributes redirectAttributes) {
+        try {
+            orderService.updateOrderRowNumber(orderId, rowId, number);
+        } catch (IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", getLocalizedMessage("error.orders.approved.modify"));
+        } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", getLocalizedMessage("validation.orderrow.number.min"));
+        }
+        return "redirect:/orders/" + orderId + "/edit";
+    }
+
+    private boolean hasRole(Authentication authentication, String role) {
+        return authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals(role));
+    }
+
+    private void populatePagingModel(Model model, Page<OrdersResponse> pageResult,
+                                     int page, int size, String sortField, String sortDir, String keyword) {
+        model.addAttribute("orders", pageResult.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", pageResult.getTotalPages());
+        model.addAttribute("totalItems", pageResult.getTotalElements());
+        model.addAttribute("size", size);
+        model.addAttribute("sortField", sortField);
+        model.addAttribute("sortDir", sortDir);
+        model.addAttribute("reverseSortDir", sortDir.equalsIgnoreCase("asc") ? "desc" : "asc");
+        model.addAttribute("keyword", keyword);
+    }
+
+    private void populateOrderFormModel(Model model, Authentication authentication) {
+        if (hasRole(authentication, ROLE_CLIENT)) {
+            ClientResponse currentClient = clientService.getByEmail(authentication.getName());
+            model.addAttribute("currentClientName", currentClient.getName());
+        } else {
+            model.addAttribute("clients", clientService.getAll(0, DROPDOWN_PAGE_SIZE, "id", "asc", null).getContent());
+        }
+    }
+
+    private void resolveOrderParticipants(CreateOrdersRequest request, Authentication authentication) {
+        if (hasRole(authentication, ROLE_CLIENT)) {
+            ClientResponse currentClient = clientService.getByEmail(authentication.getName());
+            request.setClientId(currentClient.getId());
+            request.setEmployeeId(null);
+        } else if (hasRole(authentication, ROLE_EMPLOYEE)) {
+            EmployeeResponse currentEmployee = employeeService.getByEmail(authentication.getName());
+            request.setEmployeeId(currentEmployee.getId());
+        }
     }
 
     private void setApprovalStatus(Long id, boolean approved) {
@@ -225,62 +280,35 @@ public class OrdersController {
         request.setClientId(response.getClient() != null ? response.getClient().getId() : null);
         request.setEmployeeId(response.getEmployee() != null ? response.getEmployee().getId() : null);
         request.setApproved(response.getApproved());
-
-        if (response.getOrderRowSet() != null) {
-            Set<UpdateOrderRowRequest> rows = response.getOrderRowSet().stream()
-                    .map(row -> {
-                        UpdateOrderRowRequest r = new UpdateOrderRowRequest();
-                        r.setId(row.getId());
-                        r.setApplianceId(row.getAppliance() != null ? row.getAppliance().getId() : null);
-                        r.setNumber(row.getNumber());
-                        r.setAmount(row.getAmount());
-                        return r;
-                    })
-                    .collect(Collectors.toSet());
-            request.setOrderRowSet(rows);
-        }
-
+        request.setOrderRowSet(mapOrderRows(response.getOrderRowSet()));
         return request;
     }
 
-    @GetMapping("/{id}/assign-self")
-    @PreAuthorize("hasRole('EMPLOYEE')")
-    public String assignSelfToOrder(@PathVariable Long id,
-                                    Authentication authentication,
-                                    RedirectAttributes redirectAttributes) {
-        try {
-            String currentEmployeeEmail = authentication.getName();
-            orderService.assignEmployee(id, currentEmployeeEmail);
-        } catch (IllegalStateException ex) {
-            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+    private Set<UpdateOrderRowRequest> mapOrderRows(Set<OrderRowResponse> rowSet) {
+        if (rowSet == null) {
+            return Collections.emptySet();
         }
-        return "redirect:/orders";
+        return rowSet.stream()
+                .map(row -> {
+                    UpdateOrderRowRequest rowRequest = new UpdateOrderRowRequest();
+                    rowRequest.setId(row.getId());
+                    rowRequest.setApplianceId(row.getAppliance() != null ? row.getAppliance().getId() : null);
+                    rowRequest.setNumber(row.getNumber());
+                    rowRequest.setAmount(row.getAmount());
+                    return rowRequest;
+                })
+                .collect(Collectors.toSet());
     }
 
-    @GetMapping("/{orderId}/row/{rowId}/delete")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
-    public String deleteOrderRow(@PathVariable Long orderId,
-                                 @PathVariable Long rowId,
-                                 RedirectAttributes redirectAttributes) {
-        try {
-            orderService.deleteOrderRow(orderId, rowId);
-        } catch (IllegalStateException ex) {
-            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
-        }
-        return "redirect:/orders/" + orderId + "/edit";
+    private UpdateOrderRowRequest createOrderRowRequest(Long applianceId, Long numbers, BigDecimal price) {
+        UpdateOrderRowRequest rowRequest = new UpdateOrderRowRequest();
+        rowRequest.setApplianceId(applianceId);
+        rowRequest.setNumber(numbers);
+        rowRequest.setAmount(price.multiply(BigDecimal.valueOf(numbers)));
+        return rowRequest;
     }
 
-    @PostMapping("/{orderId}/row/{rowId}/update")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
-    public String updateOrderRowNumber(@PathVariable Long orderId,
-                                       @PathVariable Long rowId,
-                                       @RequestParam("number") Long number,
-                                       RedirectAttributes redirectAttributes) {
-        try {
-            orderService.updateOrderRowNumber(orderId, rowId, number);
-        } catch (IllegalStateException | IllegalArgumentException ex) {
-            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
-        }
-        return "redirect:/orders/" + orderId + "/edit";
+    private String getLocalizedMessage(String key) {
+        return messageSource.getMessage(key, null, LocaleContextHolder.getLocale());
     }
 }
