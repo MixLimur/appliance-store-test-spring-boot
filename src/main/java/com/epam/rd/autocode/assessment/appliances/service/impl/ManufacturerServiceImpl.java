@@ -17,38 +17,24 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ManufacturerServiceImpl implements ManufacturerService {
 
     private final ManufacturerRepository manufacturerRepository;
     private final ManufacturerMapper manufacturerMapper;
 
     @Override
-    @Transactional(readOnly = true)
     public Page<ManufacturerResponse> getAll(int page, int size, String sortField, String sortDir, String keyword) {
-        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ?
-                Sort.by(sortField).ascending() : Sort.by(sortField).descending();
-
-        Pageable pageable = PageRequest.of(page, size, sort);
-        Page<Manufacturer> manufacturerPage;
-
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            manufacturerPage = manufacturerRepository.findByNameContainingIgnoreCase(keyword.trim(), pageable);
-        } else {
-            manufacturerPage = manufacturerRepository.findAll(pageable);
-        }
-
+        Pageable pageable = createPageable(page, size, sortField, sortDir);
+        Page<Manufacturer> manufacturerPage = fetchManufacturersPage(keyword, pageable);
         return manufacturerPage.map(manufacturerMapper::toResponse);
     }
 
     @Override
     public ManufacturerResponse getById(Long id) {
-        Manufacturer manufacturer = manufacturerRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Manufacturer not found with id: " + id));
-        return manufacturerMapper.toResponse(manufacturer);
+        return manufacturerMapper.toResponse(findManufacturerById(id));
     }
 
     @Override
@@ -62,11 +48,8 @@ public class ManufacturerServiceImpl implements ManufacturerService {
     @Override
     @Transactional
     public ManufacturerResponse update(Long id, UpdateManufacturerRequest request) {
-        Manufacturer existingManufacturer = manufacturerRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Manufacturer not found with id: " + id));
-
+        Manufacturer existingManufacturer = findManufacturerById(id);
         manufacturerMapper.updateEntityFromRequest(request, existingManufacturer);
-
         Manufacturer updatedManufacturer = manufacturerRepository.save(existingManufacturer);
         return manufacturerMapper.toResponse(updatedManufacturer);
     }
@@ -74,14 +57,37 @@ public class ManufacturerServiceImpl implements ManufacturerService {
     @Override
     @Transactional
     public void delete(Long id) {
-        if (!manufacturerRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Manufacturer not found with id: " + id);
-        }
+        ensureManufacturerExists(id);
         try {
             manufacturerRepository.deleteById(id);
             manufacturerRepository.flush();
         } catch (DataIntegrityViolationException e) {
             throw new IllegalStateException("error.manufacturer.delete.referenced");
+        }
+    }
+
+    private Pageable createPageable(int page, int size, String sortField, String sortDir) {
+        Sort.Direction direction = Sort.Direction.fromOptionalString(sortDir)
+                .orElse(Sort.Direction.ASC);
+        return PageRequest.of(page, size, Sort.by(direction, sortField));
+    }
+
+    private Page<Manufacturer> fetchManufacturersPage(String keyword, Pageable pageable) {
+        if (keyword != null && !keyword.isBlank()) {
+            String sanitizedKeyword = keyword.trim();
+            return manufacturerRepository.findByNameContainingIgnoreCase(sanitizedKeyword, pageable);
+        }
+        return manufacturerRepository.findAll(pageable);
+    }
+
+    private Manufacturer findManufacturerById(Long id) {
+        return manufacturerRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Manufacturer not found with id: " + id));
+    }
+
+    private void ensureManufacturerExists(Long id) {
+        if (!manufacturerRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Manufacturer not found with id: " + id);
         }
     }
 }
