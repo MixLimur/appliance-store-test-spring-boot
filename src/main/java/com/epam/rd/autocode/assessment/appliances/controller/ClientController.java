@@ -35,16 +35,7 @@ public class ClientController {
             Model model) {
 
         Page<ClientResponse> pageResult = clientService.getAll(page, size, sortField, sortDir, keyword);
-
-        model.addAttribute("clients", pageResult.getContent());
-        model.addAttribute("currentPage", page);
-        model.addAttribute("totalPages", pageResult.getTotalPages());
-        model.addAttribute("totalItems", pageResult.getTotalElements());
-        model.addAttribute("size", size);
-        model.addAttribute("sortField", sortField);
-        model.addAttribute("sortDir", sortDir);
-        model.addAttribute("reverseSortDir", sortDir.equals("asc") ? "desc" : "asc");
-        model.addAttribute("keyword", keyword);
+        populatePagingModel(model, pageResult, page, size, sortField, sortDir, keyword);
 
         return "client/clients";
     }
@@ -67,6 +58,27 @@ public class ClientController {
         return "redirect:/clients";
     }
 
+    @GetMapping("/{id}/edit")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public String showEditForm(@PathVariable Long id, Model model) {
+        ClientResponse client = clientService.getById(id);
+        model.addAttribute("client", mapToUpdateRequest(client));
+        return "client/editClient";
+    }
+
+    @PostMapping("/{id}/edit")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public String updateClient(@PathVariable Long id,
+                               @Valid @ModelAttribute("client") UpdateClientRequest request,
+                               BindingResult result) {
+        request.setId(id);
+        if (result.hasErrors()) {
+            return "client/editClient";
+        }
+        clientService.update(id, request);
+        return "redirect:/clients";
+    }
+
     @GetMapping("/{id}/delete")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public String deleteClient(@PathVariable Long id, RedirectAttributes redirectAttributes) {
@@ -83,29 +95,26 @@ public class ClientController {
         return "redirect:/clients";
     }
 
-    @GetMapping("/{id}/edit")
-    public String showEditForm(@PathVariable Long id, Model model) {
-        ClientResponse client = clientService.getById(id);
+    private void populatePagingModel(Model model, Page<ClientResponse> pageResult,
+                                     int page, int size, String sortField, String sortDir, String keyword) {
+        model.addAttribute("clients", pageResult.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", pageResult.getTotalPages());
+        model.addAttribute("totalItems", pageResult.getTotalElements());
+        model.addAttribute("size", size);
+        model.addAttribute("sortField", sortField);
+        model.addAttribute("sortDir", sortDir);
+        model.addAttribute("reverseSortDir", sortDir.equalsIgnoreCase("asc") ? "desc" : "asc");
+        model.addAttribute("keyword", keyword);
+    }
 
+    private UpdateClientRequest mapToUpdateRequest(ClientResponse client) {
         UpdateClientRequest request = new UpdateClientRequest();
         request.setId(client.getId());
         request.setName(client.getName());
         request.setEmail(client.getEmail());
         request.setCard(client.getCard());
-
-        model.addAttribute("client", request);
-        return "client/editClient";
-    }
-
-    @PostMapping("/{id}/edit")
-    public String updateClient(@PathVariable Long id,
-                               @Valid @ModelAttribute("client") UpdateClientRequest request,
-                               BindingResult result) {
-        if (result.hasErrors()) {
-            return "client/editClient";
-        }
-        clientService.update(id, request);
-        return "redirect:/clients";
+        return request;
     }
 
 }
