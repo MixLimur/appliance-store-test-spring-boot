@@ -53,7 +53,6 @@ class ApplianceControllerTest {
 
     @BeforeEach
     void setUp() {
-        // Створюємо "пустий" валідатор, який завжди пропускає об'єкти без помилок
         Validator mockValidator = new Validator() {
             @Override
             public boolean supports(Class<?> clazz) {
