@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Collections;
 import java.util.List;
@@ -36,6 +37,9 @@ class EmployeeServiceImplTest {
 
     @Mock
     private EmployeeMapper mapper;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private EmployeeServiceImpl service;
@@ -192,7 +196,7 @@ class EmployeeServiceImplTest {
         assertThrows(DuplicateEmailException.class, () -> service.create(createRequest));
 
         verify(repository, never()).save(any());
-        verifyNoInteractions(mapper);
+        verifyNoInteractions(mapper, passwordEncoder);
     }
 
     @Test
@@ -200,6 +204,7 @@ class EmployeeServiceImplTest {
     void create_WhenValidRequest_ShouldSaveAndReturnResponse() {
         when(repository.findByEmail(createRequest.getEmail())).thenReturn(Optional.empty());
         when(mapper.toEntity(createRequest)).thenReturn(employeeEntity);
+        when(passwordEncoder.encode("SecurePass123")).thenReturn("encodedSecurePass123");
         when(repository.save(employeeEntity)).thenReturn(employeeEntity);
         when(mapper.toResponse(employeeEntity)).thenReturn(employeeResponse);
 
@@ -207,8 +212,10 @@ class EmployeeServiceImplTest {
 
         assertNotNull(result);
         assertEquals(employeeResponse, result);
+        assertEquals("encodedSecurePass123", employeeEntity.getPassword());
         verify(repository).findByEmail(createRequest.getEmail());
         verify(mapper).toEntity(createRequest);
+        verify(passwordEncoder).encode("SecurePass123");
         verify(repository).save(employeeEntity);
         verify(mapper).toResponse(employeeEntity);
     }

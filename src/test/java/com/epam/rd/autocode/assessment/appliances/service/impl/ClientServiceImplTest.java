@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Collections;
 import java.util.List;
@@ -33,6 +34,9 @@ class ClientServiceImplTest {
 
     @Mock
     private ClientMapper mapper;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private ClientServiceImpl service;
@@ -187,7 +191,7 @@ class ClientServiceImplTest {
         assertThrows(DuplicateEmailException.class, () -> service.create(createRequest));
 
         verify(repository, never()).save(any());
-        verifyNoInteractions(mapper);
+        verifyNoInteractions(mapper, passwordEncoder);
     }
 
     @Test
@@ -195,6 +199,7 @@ class ClientServiceImplTest {
     void create_WhenValidRequest_ShouldSaveAndReturnResponse() {
         when(repository.findByEmail(createRequest.getEmail())).thenReturn(Optional.empty());
         when(mapper.toEntity(createRequest)).thenReturn(clientEntity);
+        when(passwordEncoder.encode("SecurePass123")).thenReturn("encodedSecurePass123");
         when(repository.save(clientEntity)).thenReturn(clientEntity);
         when(mapper.toResponse(clientEntity)).thenReturn(clientResponse);
 
@@ -202,8 +207,10 @@ class ClientServiceImplTest {
 
         assertNotNull(result);
         assertEquals(clientResponse, result);
+        assertEquals("encodedSecurePass123", clientEntity.getPassword());
         verify(repository).findByEmail(createRequest.getEmail());
         verify(mapper).toEntity(createRequest);
+        verify(passwordEncoder).encode("SecurePass123");
         verify(repository).save(clientEntity);
         verify(mapper).toResponse(clientEntity);
     }
