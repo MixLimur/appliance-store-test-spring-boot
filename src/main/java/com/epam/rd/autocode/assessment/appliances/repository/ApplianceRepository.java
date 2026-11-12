@@ -6,9 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ApplianceRepository extends JpaRepository<Appliance, Long> {
-    Page<Appliance> findByNameContainingIgnoreCaseOrModelContainingIgnoreCase(
-            String name,
-            String model,
-            Pageable pageable
-    );
+
+    Page<Appliance> findByNameContainingIgnoreCaseOrModelContainingIgnoreCaseOrManufacturerNameContainingIgnoreCase(
+            String name, String model, String manufacturerName, Pageable pageable);
 }

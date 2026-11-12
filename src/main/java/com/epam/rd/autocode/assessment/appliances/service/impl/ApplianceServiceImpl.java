@@ -30,68 +30,77 @@ public class ApplianceServiceImpl implements ApplianceService {
     private final ApplianceMapper applianceMapper;
 
     @Override
-    @Transactional(readOnly = true)
     public Page<ApplianceResponse> getAll(int page, int size, String sortField, String sortDir, String keyword) {
-        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ?
-                Sort.by(sortField).ascending() : Sort.by(sortField).descending();
-
-        Pageable pageable = PageRequest.of(page, size, sort);
-        Page<Appliance> appliancePage;
-
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            String k = keyword.trim();
-            appliancePage = applianceRepository.findByNameContainingIgnoreCaseOrModelContainingIgnoreCase(k, k, pageable);
-        } else {
-            appliancePage = applianceRepository.findAll(pageable);
-        }
-
+        Pageable pageable = createPageable(page, size, sortField, sortDir);
+        Page<Appliance> appliancePage = fetchAppliancesPage(keyword, pageable);
         return appliancePage.map(applianceMapper::toResponse);
     }
 
     @Override
     public ApplianceResponse getById(Long id) {
-        return applianceRepository.findById(id)
-                .map(applianceMapper::toResponse)
-                .orElseThrow(() -> new ResourceNotFoundException("Appliance not found with id: " + id));
+        return applianceMapper.toResponse(findApplianceById(id));
     }
 
     @Override
+    @Transactional
     public ApplianceResponse create(CreateApplianceRequest request) {
-
-        Long manufacturerId = request.getManufacturerId();
-        Manufacturer manufacturer = manufacturerRepository.findById(manufacturerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cannot create appliance. Manufacturer not found with id: " + manufacturerId));
-
+        Manufacturer manufacturer = findManufacturerById(request.getManufacturerId());
         Appliance appliance = applianceMapper.toEntity(request, manufacturer);
         Appliance savedAppliance = applianceRepository.save(appliance);
         return applianceMapper.toResponse(savedAppliance);
     }
 
     @Override
+    @Transactional
     public ApplianceResponse update(Long id, UpdateApplianceRequest request) {
-        Appliance appliance = applianceRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Appliance not found with id: " + id));
-
-        Long manufacturerId = request.getManufacturerId();
-        Manufacturer manufacturer = manufacturerRepository.findById(manufacturerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cannot update appliance. Manufacturer not found with id: " + manufacturerId));
+        Appliance appliance = findApplianceById(id);
+        Manufacturer manufacturer = findManufacturerById(request.getManufacturerId());
 
         applianceMapper.updateEntityFromRequest(request, appliance, manufacturer);
-
         Appliance updatedAppliance = applianceRepository.save(appliance);
         return applianceMapper.toResponse(updatedAppliance);
     }
 
     @Override
+    @Transactional
     public void delete(Long id) {
-        if (!applianceRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Appliance not found with id: " + id);
-        }
+        ensureApplianceExists(id);
         try {
             applianceRepository.deleteById(id);
             applianceRepository.flush();
         } catch (DataIntegrityViolationException e) {
             throw new IllegalStateException("error.appliance.delete.referenced");
+        }
+    }
+
+    private Pageable createPageable(int page, int size, String sortField, String sortDir) {
+        Sort.Direction direction = Sort.Direction.fromOptionalString(sortDir)
+                .orElse(Sort.Direction.ASC);
+        return PageRequest.of(page, size, Sort.by(direction, sortField));
+    }
+
+    private Page<Appliance> fetchAppliancesPage(String keyword, Pageable pageable) {
+        if (keyword != null && !keyword.isBlank()) {
+            String sanitizedKeyword = keyword.trim();
+            return applianceRepository.findByNameContainingIgnoreCaseOrModelContainingIgnoreCaseOrManufacturerNameContainingIgnoreCase(
+                    sanitizedKeyword, sanitizedKeyword, sanitizedKeyword, pageable);
+        }
+        return applianceRepository.findAll(pageable);
+    }
+
+    private Appliance findApplianceById(Long id) {
+        return applianceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Appliance not found with id: " + id));
+    }
+
+    private Manufacturer findManufacturerById(Long manufacturerId) {
+        return manufacturerRepository.findById(manufacturerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Manufacturer not found with id: " + manufacturerId));
+    }
+
+    private void ensureApplianceExists(Long id) {
+        if (!applianceRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Appliance not found with id: " + id);
         }
     }
 }
