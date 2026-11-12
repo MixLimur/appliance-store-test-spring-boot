@@ -15,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.*;
 
 import java.util.Collections;
 import java.util.List;
@@ -67,30 +69,68 @@ class EmployeeServiceImplTest {
     }
 
     @Test
-    @DisplayName("getAll() should return list of employee responses when employees exist")
-    void getAll_WhenEmployeesExist_ShouldReturnListOfResponses() {
-        when(repository.findAll()).thenReturn(List.of(employeeEntity));
+    @DisplayName("getAll() should return page of responses when keyword is null and sort direction is ASC")
+    void getAll_WhenKeywordIsNull_ShouldReturnPageOfResponses() {
+        Pageable expectedPageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.ASC, "id"));
+        Page<Employee> employeePage = new PageImpl<>(List.of(employeeEntity));
+        when(repository.findAll(expectedPageable)).thenReturn(employeePage);
         when(mapper.toResponse(employeeEntity)).thenReturn(employeeResponse);
 
-        List<EmployeeResponse> result = service.getAll();
+        Page<EmployeeResponse> result = service.getAll(0, 5, "id", "asc", null);
 
         assertNotNull(result);
-        assertEquals(1, result.size());
-        assertEquals(employeeResponse, result.get(0));
-        verify(repository).findAll();
+        assertEquals(1, result.getTotalElements());
+        assertEquals(employeeResponse, result.getContent().get(0));
+        verify(repository).findAll(expectedPageable);
         verify(mapper).toResponse(employeeEntity);
     }
 
     @Test
-    @DisplayName("getAll() should return empty list when no employees exist")
-    void getAll_WhenEmpty_ShouldReturnEmptyList() {
-        when(repository.findAll()).thenReturn(Collections.emptyList());
+    @DisplayName("getAll() should ignore blank keyword and sort descending when sortDir is DESC")
+    void getAll_WhenKeywordIsBlankAndSortDesc_ShouldReturnSortedPage() {
+        Pageable expectedPageable = PageRequest.of(1, 10, Sort.by(Sort.Direction.DESC, "name"));
+        Page<Employee> employeePage = new PageImpl<>(List.of(employeeEntity));
+        when(repository.findAll(expectedPageable)).thenReturn(employeePage);
+        when(mapper.toResponse(employeeEntity)).thenReturn(employeeResponse);
 
-        List<EmployeeResponse> result = service.getAll();
+        Page<EmployeeResponse> result = service.getAll(1, 10, "name", "desc", "   ");
+
+        assertNotNull(result);
+        assertEquals(1, result.getContent().size());
+        verify(repository).findAll(expectedPageable);
+        verify(mapper).toResponse(employeeEntity);
+    }
+
+    @Test
+    @DisplayName("getAll() should trim keyword and fallback to ASC when sort direction is invalid")
+    void getAll_WhenKeywordProvidedAndSortInvalid_ShouldSearchWithTrimmedKeyword() {
+        Pageable expectedPageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.ASC, "email"));
+        Page<Employee> employeePage = new PageImpl<>(List.of(employeeEntity));
+        when(repository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrDepartmentContainingIgnoreCase(
+                "Bob", "Bob", "Bob", expectedPageable))
+                .thenReturn(employeePage);
+        when(mapper.toResponse(employeeEntity)).thenReturn(employeeResponse);
+
+        Page<EmployeeResponse> result = service.getAll(0, 5, "email", "invalid_dir", "  Bob  ");
+
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        verify(repository).findByNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrDepartmentContainingIgnoreCase(
+                "Bob", "Bob", "Bob", expectedPageable);
+        verify(mapper).toResponse(employeeEntity);
+    }
+
+    @Test
+    @DisplayName("getAll() should return empty page when no employees exist")
+    void getAll_WhenEmpty_ShouldReturnEmptyPage() {
+        Pageable expectedPageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.ASC, "id"));
+        when(repository.findAll(expectedPageable)).thenReturn(new PageImpl<>(Collections.emptyList()));
+
+        Page<EmployeeResponse> result = service.getAll(0, 5, "id", "asc", null);
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
-        verify(repository).findAll();
+        verify(repository).findAll(expectedPageable);
         verifyNoInteractions(mapper);
     }
 
@@ -114,7 +154,33 @@ class EmployeeServiceImplTest {
         when(repository.findById(1L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> service.getById(1L));
+
         verify(repository).findById(1L);
+        verifyNoInteractions(mapper);
+    }
+
+    @Test
+    @DisplayName("getByEmail() should return employee response when employee exists")
+    void getByEmail_WhenEmployeeExists_ShouldReturnResponse() {
+        when(repository.findByEmail("test@test.com")).thenReturn(Optional.of(employeeEntity));
+        when(mapper.toResponse(employeeEntity)).thenReturn(employeeResponse);
+
+        EmployeeResponse result = service.getByEmail("test@test.com");
+
+        assertNotNull(result);
+        assertEquals(employeeResponse, result);
+        verify(repository).findByEmail("test@test.com");
+        verify(mapper).toResponse(employeeEntity);
+    }
+
+    @Test
+    @DisplayName("getByEmail() should throw ResourceNotFoundException when email not found")
+    void getByEmail_WhenEmployeeNotFound_ShouldThrowException() {
+        when(repository.findByEmail("absent@test.com")).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.getByEmail("absent@test.com"));
+
+        verify(repository).findByEmail("absent@test.com");
         verifyNoInteractions(mapper);
     }
 
@@ -124,6 +190,7 @@ class EmployeeServiceImplTest {
         when(repository.findByEmail(createRequest.getEmail())).thenReturn(Optional.of(employeeEntity));
 
         assertThrows(DuplicateEmailException.class, () -> service.create(createRequest));
+
         verify(repository, never()).save(any());
         verifyNoInteractions(mapper);
     }
@@ -152,6 +219,7 @@ class EmployeeServiceImplTest {
         when(repository.findById(1L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> service.update(1L, updateRequest));
+
         verify(repository).findById(1L);
         verify(repository, never()).findByEmail(anyString());
         verify(repository, never()).save(any());
@@ -168,6 +236,7 @@ class EmployeeServiceImplTest {
         when(repository.findByEmail(updateRequest.getEmail())).thenReturn(Optional.of(anotherEmployee));
 
         assertThrows(DuplicateEmailException.class, () -> service.update(1L, updateRequest));
+
         verify(repository, never()).save(any());
     }
 
@@ -206,18 +275,32 @@ class EmployeeServiceImplTest {
     }
 
     @Test
-    @DisplayName("delete() should delete employee when employee exists")
-    void delete_WhenEmployeeExists_ShouldDelete() {
+    @DisplayName("delete() should delete and flush employee when employee exists and is not referenced")
+    void delete_WhenEmployeeExists_ShouldDeleteAndFlush() {
         when(repository.existsById(1L)).thenReturn(true);
 
         assertDoesNotThrow(() -> service.delete(1L));
 
         verify(repository).existsById(1L);
         verify(repository).deleteById(1L);
+        verify(repository).flush();
     }
 
     @Test
-    @DisplayName("delete() should throw exception when employee not found")
+    @DisplayName("delete() should throw IllegalStateException when employee is referenced in orders")
+    void delete_WhenReferencedInOrders_ShouldThrowIllegalStateException() {
+        when(repository.existsById(1L)).thenReturn(true);
+        doThrow(DataIntegrityViolationException.class).when(repository).flush();
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> service.delete(1L));
+
+        assertEquals("error.employee.delete.referenced", exception.getMessage());
+        verify(repository).deleteById(1L);
+        verify(repository).flush();
+    }
+
+    @Test
+    @DisplayName("delete() should throw ResourceNotFoundException when employee does not exist")
     void delete_WhenNotFound_ShouldThrowException() {
         when(repository.existsById(99L)).thenReturn(false);
 
