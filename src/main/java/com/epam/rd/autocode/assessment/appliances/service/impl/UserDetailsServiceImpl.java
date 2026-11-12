@@ -28,7 +28,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     private final ClientRepository clientRepository;
 
     @Override
-    @Loggable   
+    @Loggable
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         return employeeRepository.findByEmail(email)
                 .map(employee -> buildUserDetails(employee.getEmail(), employee.getPassword(), ROLE_EMPLOYEE))
