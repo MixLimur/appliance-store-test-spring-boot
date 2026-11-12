@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -27,10 +28,28 @@ public class ApplianceController {
     private final ManufacturerService manufacturerService;
     private final MessageSource messageSource;
 
-    @GetMapping()
-    @PreAuthorize("hasRole('EMPLOYEE')")
-    public String listAppliances(Model model) {
-        model.addAttribute("appliances", applianceService.getAll());
+    @GetMapping
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
+    public String getAllAppliances(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "id") String sortField,
+            @RequestParam(defaultValue = "asc") String sortDir,
+            @RequestParam(required = false) String keyword,
+            Model model) {
+
+        Page<ApplianceResponse> pageResult = applianceService.getAll(page, size, sortField, sortDir, keyword);
+
+        model.addAttribute("appliances", pageResult.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", pageResult.getTotalPages());
+        model.addAttribute("totalItems", pageResult.getTotalElements());
+        model.addAttribute("size", size);
+        model.addAttribute("sortField", sortField);
+        model.addAttribute("sortDir", sortDir);
+        model.addAttribute("reverseSortDir", sortDir.equals("asc") ? "desc" : "asc");
+        model.addAttribute("keyword", keyword);
+
         return "appliance/appliances";
     }
 
@@ -88,7 +107,7 @@ public class ApplianceController {
         }
 
         model.addAttribute("appliance", request);
-        model.addAttribute("manufacturers", manufacturerService.getAll());
+        model.addAttribute("manufacturers", manufacturerService.getAll(0, 1000, "name", "asc", null).getContent());
         model.addAttribute("categories", Category.values());
         model.addAttribute("powerTypes", PowerType.values());
         return "appliance/editAppliance";
@@ -102,7 +121,7 @@ public class ApplianceController {
         request.setId(id);
 
         if (result.hasErrors()) {
-            model.addAttribute("manufacturers", manufacturerService.getAll());
+            model.addAttribute("manufacturers",manufacturerService.getAll(0, 1000, "name", "asc", null).getContent());
             model.addAttribute("categories", Category.values());
             model.addAttribute("powerTypes", PowerType.values());
             return "appliance/editAppliance";
@@ -114,7 +133,7 @@ public class ApplianceController {
     private void populateDropdowns(Model model) {
         model.addAttribute("categories", Category.values());
         model.addAttribute("powerTypes", PowerType.values());
-        model.addAttribute("manufacturers", manufacturerService.getAll());
+        model.addAttribute("manufacturers", manufacturerService.getAll(0, 1000, "name", "asc", null).getContent());
     }
 }
 
