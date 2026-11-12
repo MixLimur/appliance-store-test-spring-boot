@@ -24,6 +24,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequiredArgsConstructor
 public class ApplianceController {
 
+    private static final int MANUFACTURER_DROPDOWN_LIMIT = 1000;
+
     private final ApplianceService applianceService;
     private final ManufacturerService manufacturerService;
     private final MessageSource messageSource;
@@ -39,16 +41,7 @@ public class ApplianceController {
             Model model) {
 
         Page<ApplianceResponse> pageResult = applianceService.getAll(page, size, sortField, sortDir, keyword);
-
-        model.addAttribute("appliances", pageResult.getContent());
-        model.addAttribute("currentPage", page);
-        model.addAttribute("totalPages", pageResult.getTotalPages());
-        model.addAttribute("totalItems", pageResult.getTotalElements());
-        model.addAttribute("size", size);
-        model.addAttribute("sortField", sortField);
-        model.addAttribute("sortDir", sortDir);
-        model.addAttribute("reverseSortDir", sortDir.equals("asc") ? "desc" : "asc");
-        model.addAttribute("keyword", keyword);
+        populatePagingModel(model, pageResult, page, size, sortField, sortDir, keyword);
 
         return "appliance/appliances";
     }
@@ -64,12 +57,38 @@ public class ApplianceController {
     @PostMapping("/add-appliance")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public String addAppliance(@Valid @ModelAttribute("appliance") CreateApplianceRequest request,
-                               BindingResult result, Model model) {
+                               BindingResult result,
+                               Model model) {
         if (result.hasErrors()) {
             populateDropdowns(model);
             return "appliance/newAppliance";
         }
         applianceService.create(request);
+        return "redirect:/appliances";
+    }
+
+    @GetMapping("/{id}/edit")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public String showEditForm(@PathVariable Long id, Model model) {
+        ApplianceResponse appliance = applianceService.getById(id);
+        model.addAttribute("appliance", mapToUpdateRequest(appliance));
+        populateDropdowns(model);
+        return "appliance/editAppliance";
+    }
+
+    @PostMapping("/{id}/edit")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public String updateAppliance(@PathVariable Long id,
+                                  @Valid @ModelAttribute("appliance") UpdateApplianceRequest request,
+                                  BindingResult result,
+                                  Model model) {
+        request.setId(id);
+
+        if (result.hasErrors()) {
+            populateDropdowns(model);
+            return "appliance/editAppliance";
+        }
+        applianceService.update(id, request);
         return "redirect:/appliances";
     }
 
@@ -89,10 +108,13 @@ public class ApplianceController {
         return "redirect:/appliances";
     }
 
-    @GetMapping("/{id}/edit")
-    public String showEditForm(@PathVariable Long id, Model model) {
-        ApplianceResponse appliance = applianceService.getById(id);
+    private void populateDropdowns(Model model) {
+        model.addAttribute("categories", Category.values());
+        model.addAttribute("powerTypes", PowerType.values());
+        model.addAttribute("manufacturers", manufacturerService.getAll(0, MANUFACTURER_DROPDOWN_LIMIT, "name", "asc", null).getContent());
+    }
 
+    private UpdateApplianceRequest mapToUpdateRequest(ApplianceResponse appliance) {
         UpdateApplianceRequest request = new UpdateApplianceRequest();
         request.setId(appliance.getId());
         request.setName(appliance.getName());
@@ -105,35 +127,20 @@ public class ApplianceController {
         if (appliance.getManufacturer() != null) {
             request.setManufacturerId(appliance.getManufacturer().getId());
         }
-
-        model.addAttribute("appliance", request);
-        model.addAttribute("manufacturers", manufacturerService.getAll(0, 1000, "name", "asc", null).getContent());
-        model.addAttribute("categories", Category.values());
-        model.addAttribute("powerTypes", PowerType.values());
-        return "appliance/editAppliance";
+        return request;
     }
 
-    @PostMapping("/{id}/edit")
-    public String updateAppliance(@PathVariable Long id,
-                                  @Valid @ModelAttribute("appliance") UpdateApplianceRequest request,
-                                  BindingResult result,
-                                  Model model) {
-        request.setId(id);
-
-        if (result.hasErrors()) {
-            model.addAttribute("manufacturers",manufacturerService.getAll(0, 1000, "name", "asc", null).getContent());
-            model.addAttribute("categories", Category.values());
-            model.addAttribute("powerTypes", PowerType.values());
-            return "appliance/editAppliance";
-        }
-        applianceService.update(id, request);
-        return "redirect:/appliances";
-    }
-
-    private void populateDropdowns(Model model) {
-        model.addAttribute("categories", Category.values());
-        model.addAttribute("powerTypes", PowerType.values());
-        model.addAttribute("manufacturers", manufacturerService.getAll(0, 1000, "name", "asc", null).getContent());
+    private void populatePagingModel(Model model, Page<ApplianceResponse> pageResult,
+                                     int page, int size, String sortField, String sortDir, String keyword) {
+        model.addAttribute("appliances", pageResult.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", pageResult.getTotalPages());
+        model.addAttribute("totalItems", pageResult.getTotalElements());
+        model.addAttribute("size", size);
+        model.addAttribute("sortField", sortField);
+        model.addAttribute("sortDir", sortDir);
+        model.addAttribute("reverseSortDir", sortDir.equalsIgnoreCase("asc") ? "desc" : "asc");
+        model.addAttribute("keyword", keyword);
     }
 }
 
