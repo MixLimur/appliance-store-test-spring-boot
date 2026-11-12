@@ -3,30 +3,50 @@
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <body>
 <div th:fragment="navy">
-    <nav class="navbar navbar-expand-sm bg-primary navbar-dark">
+    <nav class="navbar navbar-expand-sm bg-primary navbar-dark shadow-sm">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/" th:text="#{shop.name}"></a>
-            <div class="collapse navbar-collapse">
-                <ul class="navbar-nav">
+            <a class="navbar-brand fw-bold" href="/" th:text="#{shop.name}">Appliance Store</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarContent">
+                <ul class="navbar-nav me-auto">
                     <li class="nav-item" sec:authorize="hasRole('EMPLOYEE')">
-                        <a class="nav-link" th:href="@{/clients}" th:text="#{clients.menu.name}"></a>
+                        <a class="nav-link" th:href="@{/clients}">
+                            <i class="fa fa-users me-1"></i>
+                            <span th:text="#{clients.menu.name}">Clients</span>
+                        </a>
                     </li>
                     <li class="nav-item" sec:authorize="hasRole('EMPLOYEE')">
-                        <a class="nav-link" th:href="@{/employees}" th:text="#{employees.menu.name}"></a>
+                        <a class="nav-link" th:href="@{/employees}">
+                            <i class="fa fa-user-circle me-1"></i>
+                            <span th:text="#{employees.menu.name}">Employees</span>
+                        </a>
                     </li>
                     <li class="nav-item" sec:authorize="hasRole('EMPLOYEE')">
-                        <a class="nav-link" th:href="@{/manufacturers}" th:text="#{manufacturers.menu.name}"></a>
+                        <a class="nav-link" th:href="@{/manufacturers}">
+                            <i class="fa fa-industry me-1"></i>
+                            <span th:text="#{manufacturers.menu.name}">Manufacturers</span>
+                        </a>
                     </li>
                     <li class="nav-item" sec:authorize="hasRole('EMPLOYEE')">
-                        <a class="nav-link" th:href="@{/appliances}" th:text="#{appliances.menu.name}"></a>
+                        <a class="nav-link" th:href="@{/appliances}">
+                            <i class="fa fa-desktop me-1"></i>
+                            <span th:text="#{appliances.menu.name}">Appliances</span>
+                        </a>
                     </li>
                     <li class="nav-item" sec:authorize="hasAnyRole('EMPLOYEE', 'CLIENT')">
-                        <a class="nav-link" th:href="@{/orders}" th:text="#{order.menu.name}"></a>
+                        <a class="nav-link" th:href="@{/orders}">
+                            <i class="fa fa-shopping-bag me-1"></i>
+                            <span th:text="#{order.menu.name}">Orders</span>
+                        </a>
                     </li>
                 </ul>
                 <ul class="navbar-nav ms-auto border-end pe-3 me-3">
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle text-light" href="#" id="langDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" th:text="#{nav.lang}">
+                        <a class="nav-link dropdown-toggle text-light" href="#" id="langDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa fa-globe me-1"></i>
+                            <span th:text="#{nav.lang}">Language</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="langDropdown">
                             <li><a class="dropdown-item" th:href="@{''(lang='en')}">English</a></li>
@@ -34,31 +54,31 @@
                         </ul>
                     </li>
                 </ul>
-                <ul class="navbar-nav ms-auto" sec:authorize="isAuthenticated()">
-                    <li class="nav-item">
-                        <span class="nav-link text-light" sec:authentication="name">User</span>
+                <ul class="navbar-nav" sec:authorize="isAuthenticated()">
+                    <li class="nav-item me-2">
+                        <span class="nav-link text-light">
+                            <i class="fa fa-user me-1"></i>
+                            <span sec:authentication="name">User</span>
+                        </span>
                     </li>
                     <li class="nav-item">
                         <form th:action="@{/logout}" method="post" class="m-0 p-0">
-                            <button type="submit" class="nav-link bg-transparent border-0" th:text="#{logout.btn}" style="cursor: pointer;">
-                                Logout
+                            <button type="submit" class="nav-link bg-transparent border-0 text-light" style="cursor: pointer;">
+                                <i class="fa fa-sign-out me-1"></i>
+                                <span th:text="#{logout.btn}">Logout</span>
                             </button>
                         </form>
                     </li>
                 </ul>
-                <ul class="navbar-nav ms-auto" sec:authorize="isAnonymous()">
+                <ul class="navbar-nav" sec:authorize="isAnonymous()">
                     <li class="nav-item">
-                        <a class="nav-link btn btn-outline-light ms-2" th:href="@{/login}" th:text="#{login.btn}">Login</a>
+                        <a class="nav-link btn btn-outline-light ms-2 px-3" th:href="@{/login}">
+                            <i class="fa fa-sign-in me-1"></i>
+                            <span th:text="#{login.btn}">Login</span>
+                        </a>
                     </li>
                 </ul>
             </div>
-        </div>
-    </nav>
-</div>
-<div th:fragment="line">
-    <nav class="navbar navbar-expand-sm bg-primary navbar-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Appliance store</a>
         </div>
     </nav>
 </div>
