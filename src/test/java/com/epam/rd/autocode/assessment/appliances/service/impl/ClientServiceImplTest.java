@@ -15,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.*;
 
 import java.util.Collections;
 import java.util.List;
@@ -64,30 +66,66 @@ class ClientServiceImplTest {
     }
 
     @Test
-    @DisplayName("getAll() should return list of client responses when clients exist")
-    void getAll_WhenClientsExist_ShouldReturnListOfResponses() {
-        when(repository.findAll()).thenReturn(List.of(clientEntity));
+    @DisplayName("getAll() should return page of responses when keyword is null and sort direction is ASC")
+    void getAll_WhenKeywordIsNull_ShouldReturnPageOfResponses() {
+        Pageable expectedPageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.ASC, "id"));
+        Page<Client> clientPage = new PageImpl<>(List.of(clientEntity));
+        when(repository.findAll(expectedPageable)).thenReturn(clientPage);
         when(mapper.toResponse(clientEntity)).thenReturn(clientResponse);
 
-        List<ClientResponse> result = service.getAll();
+        Page<ClientResponse> result = service.getAll(0, 5, "id", "asc", null);
 
         assertNotNull(result);
-        assertEquals(1, result.size());
-        assertEquals(clientResponse, result.get(0));
-        verify(repository).findAll();
+        assertEquals(1, result.getTotalElements());
+        assertEquals(clientResponse, result.getContent().get(0));
+        verify(repository).findAll(expectedPageable);
         verify(mapper).toResponse(clientEntity);
     }
 
     @Test
-    @DisplayName("getAll() should return empty list when no clients exist")
-    void getAll_WhenEmpty_ShouldReturnEmptyList() {
-        when(repository.findAll()).thenReturn(Collections.emptyList());
+    @DisplayName("getAll() should ignore blank keyword and sort descending when sortDir is DESC")
+    void getAll_WhenKeywordIsBlankAndSortDesc_ShouldReturnSortedPage() {
+        Pageable expectedPageable = PageRequest.of(1, 10, Sort.by(Sort.Direction.DESC, "name"));
+        Page<Client> clientPage = new PageImpl<>(List.of(clientEntity));
+        when(repository.findAll(expectedPageable)).thenReturn(clientPage);
+        when(mapper.toResponse(clientEntity)).thenReturn(clientResponse);
 
-        List<ClientResponse> result = service.getAll();
+        Page<ClientResponse> result = service.getAll(1, 10, "name", "desc", "   ");
+
+        assertNotNull(result);
+        assertEquals(1, result.getContent().size());
+        verify(repository).findAll(expectedPageable);
+        verify(mapper).toResponse(clientEntity);
+    }
+
+    @Test
+    @DisplayName("getAll() should trim keyword and fallback to ASC when sort direction is invalid")
+    void getAll_WhenKeywordProvidedAndSortInvalid_ShouldSearchWithTrimmedKeyword() {
+        Pageable expectedPageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.ASC, "email"));
+        Page<Client> clientPage = new PageImpl<>(List.of(clientEntity));
+        when(repository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase("John", "John", expectedPageable))
+                .thenReturn(clientPage);
+        when(mapper.toResponse(clientEntity)).thenReturn(clientResponse);
+
+        Page<ClientResponse> result = service.getAll(0, 5, "email", "invalid_dir", "  John  ");
+
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        verify(repository).findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase("John", "John", expectedPageable);
+        verify(mapper).toResponse(clientEntity);
+    }
+
+    @Test
+    @DisplayName("getAll() should return empty page when no clients exist")
+    void getAll_WhenEmpty_ShouldReturnEmptyPage() {
+        Pageable expectedPageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.ASC, "id"));
+        when(repository.findAll(expectedPageable)).thenReturn(new PageImpl<>(Collections.emptyList()));
+
+        Page<ClientResponse> result = service.getAll(0, 5, "id", "asc", null);
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
-        verify(repository).findAll();
+        verify(repository).findAll(expectedPageable);
         verifyNoInteractions(mapper);
     }
 
@@ -111,7 +149,33 @@ class ClientServiceImplTest {
         when(repository.findById(1L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> service.getById(1L));
+
         verify(repository).findById(1L);
+        verifyNoInteractions(mapper);
+    }
+
+    @Test
+    @DisplayName("getByEmail() should return client response when client exists")
+    void getByEmail_WhenClientExists_ShouldReturnResponse() {
+        when(repository.findByEmail("john.doe@example.com")).thenReturn(Optional.of(clientEntity));
+        when(mapper.toResponse(clientEntity)).thenReturn(clientResponse);
+
+        ClientResponse result = service.getByEmail("john.doe@example.com");
+
+        assertNotNull(result);
+        assertEquals(clientResponse, result);
+        verify(repository).findByEmail("john.doe@example.com");
+        verify(mapper).toResponse(clientEntity);
+    }
+
+    @Test
+    @DisplayName("getByEmail() should throw ResourceNotFoundException when email not found")
+    void getByEmail_WhenClientNotFound_ShouldThrowException() {
+        when(repository.findByEmail("absent@example.com")).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.getByEmail("absent@example.com"));
+
+        verify(repository).findByEmail("absent@example.com");
         verifyNoInteractions(mapper);
     }
 
@@ -121,6 +185,7 @@ class ClientServiceImplTest {
         when(repository.findByEmail(createRequest.getEmail())).thenReturn(Optional.of(clientEntity));
 
         assertThrows(DuplicateEmailException.class, () -> service.create(createRequest));
+
         verify(repository, never()).save(any());
         verifyNoInteractions(mapper);
     }
@@ -149,6 +214,7 @@ class ClientServiceImplTest {
         when(repository.findById(1L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> service.update(1L, updateRequest));
+
         verify(repository).findById(1L);
         verify(repository, never()).findByEmail(anyString());
         verify(repository, never()).save(any());
@@ -165,6 +231,7 @@ class ClientServiceImplTest {
         when(repository.findByEmail(updateRequest.getEmail())).thenReturn(Optional.of(anotherClient));
 
         assertThrows(DuplicateEmailException.class, () -> service.update(1L, updateRequest));
+
         verify(repository, never()).save(any());
     }
 
@@ -203,14 +270,28 @@ class ClientServiceImplTest {
     }
 
     @Test
-    @DisplayName("delete() should delete client when client exists")
-    void delete_WhenClientExists_ShouldDelete() {
+    @DisplayName("delete() should delete and flush client when client exists and is not referenced")
+    void delete_WhenClientExists_ShouldDeleteAndFlush() {
         when(repository.existsById(1L)).thenReturn(true);
 
         assertDoesNotThrow(() -> service.delete(1L));
 
         verify(repository).existsById(1L);
         verify(repository).deleteById(1L);
+        verify(repository).flush();
+    }
+
+    @Test
+    @DisplayName("delete() should throw IllegalStateException when client is referenced in orders")
+    void delete_WhenReferencedInOrders_ShouldThrowIllegalStateException() {
+        when(repository.existsById(1L)).thenReturn(true);
+        doThrow(DataIntegrityViolationException.class).when(repository).flush();
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> service.delete(1L));
+
+        assertEquals("error.client.delete.referenced", exception.getMessage());
+        verify(repository).deleteById(1L);
+        verify(repository).flush();
     }
 
     @Test
