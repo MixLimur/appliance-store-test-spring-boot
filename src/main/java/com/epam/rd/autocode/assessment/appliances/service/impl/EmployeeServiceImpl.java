@@ -18,49 +18,35 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class EmployeeServiceImpl implements EmployeeService {
 
     private final EmployeeRepository employeeRepository;
     private final EmployeeMapper employeeMapper;
 
     @Override
-    @Transactional(readOnly = true)
     public Page<EmployeeResponse> getAll(int page, int size, String sortField, String sortDir, String keyword) {
-        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ?
-                Sort.by(sortField).ascending() : Sort.by(sortField).descending();
-
-        Pageable pageable = PageRequest.of(page, size, sort);
-        Page<Employee> employeePage;
-
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            String k = keyword.trim();
-            employeePage = employeeRepository
-                    .findByNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrDepartmentContainingIgnoreCase(k, k, k, pageable);
-        } else {
-            employeePage = employeeRepository.findAll(pageable);
-        }
-
+        Pageable pageable = createPageable(page, size, sortField, sortDir);
+        Page<Employee> employeePage = fetchEmployeesPage(keyword, pageable);
         return employeePage.map(employeeMapper::toResponse);
     }
 
     @Override
     public EmployeeResponse getById(Long id) {
-        return employeeRepository.findById(id)
-                .map(employeeMapper::toResponse)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
+        return employeeMapper.toResponse(findEmployeeById(id));
+    }
+
+    @Override
+    public EmployeeResponse getByEmail(String email) {
+        return employeeMapper.toResponse(findEmployeeByEmail(email));
     }
 
     @Override
     @Transactional
     public EmployeeResponse create(CreateEmployeeRequest request) {
-        if (employeeRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new DuplicateEmailException("Email is already in use: " + request.getEmail());
-        }
-
+        validateEmailUniquenessForCreate(request.getEmail());
         Employee employee = employeeMapper.toEntity(request);
         Employee saved = employeeRepository.save(employee);
         return employeeMapper.toResponse(saved);
@@ -69,14 +55,8 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     @Transactional
     public EmployeeResponse update(Long id, UpdateEmployeeRequest request) {
-        Employee employee = employeeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
-
-        employeeRepository.findByEmail(request.getEmail()).ifPresent(existingEmployee -> {
-            if (!existingEmployee.getId().equals(id)) {
-                throw new DuplicateEmailException("Email " + request.getEmail() + " is already in use by another user");
-            }
-        });
+        Employee employee = findEmployeeById(id);
+        validateEmailUniquenessForUpdate(id, request.getEmail());
 
         employeeMapper.updateEntityFromRequest(request, employee);
         Employee updatedEmployee = employeeRepository.save(employee);
@@ -86,10 +66,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     @Transactional
     public void delete(Long id) {
-        if (!employeeRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Employee not found with id: " + id);
-        }
-        employeeRepository.deleteById(id);
+        ensureEmployeeExists(id);
         try {
             employeeRepository.deleteById(id);
             employeeRepository.flush();
@@ -98,10 +75,49 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
     }
 
-    @Override
-    public EmployeeResponse getByEmail(String email) {
+    private Pageable createPageable(int page, int size, String sortField, String sortDir) {
+        Sort.Direction direction = Sort.Direction.fromOptionalString(sortDir)
+                .orElse(Sort.Direction.ASC);
+        return PageRequest.of(page, size, Sort.by(direction, sortField));
+    }
+
+    private Page<Employee> fetchEmployeesPage(String keyword, Pageable pageable) {
+        if (keyword != null && !keyword.isBlank()) {
+            String sanitizedKeyword = keyword.trim();
+            return employeeRepository
+                    .findByNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrDepartmentContainingIgnoreCase(
+                            sanitizedKeyword, sanitizedKeyword, sanitizedKeyword, pageable);
+        }
+        return employeeRepository.findAll(pageable);
+    }
+
+    private Employee findEmployeeById(Long id) {
+        return employeeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + id));
+    }
+
+    private Employee findEmployeeByEmail(String email) {
         return employeeRepository.findByEmail(email)
-                .map(employeeMapper::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with email: " + email));
+    }
+
+    private void validateEmailUniquenessForCreate(String email) {
+        if (employeeRepository.findByEmail(email).isPresent()) {
+            throw new DuplicateEmailException("Email is already in use: " + email);
+        }
+    }
+
+    private void validateEmailUniquenessForUpdate(Long currentId, String email) {
+        employeeRepository.findByEmail(email).ifPresent(existingEmployee -> {
+            if (!existingEmployee.getId().equals(currentId)) {
+                throw new DuplicateEmailException("Email " + email + " is already in use by another user");
+            }
+        });
+    }
+
+    private void ensureEmployeeExists(Long id) {
+        if (!employeeRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Employee not found with id: " + id);
+        }
     }
 }
