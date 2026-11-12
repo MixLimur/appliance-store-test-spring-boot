@@ -15,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     private final EmployeeRepository employeeRepository;
     private final EmployeeMapper employeeMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public Page<EmployeeResponse> getAll(int page, int size, String sortField, String sortDir, String keyword) {
@@ -48,6 +50,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     public EmployeeResponse create(CreateEmployeeRequest request) {
         validateEmailUniquenessForCreate(request.getEmail());
         Employee employee = employeeMapper.toEntity(request);
+        employee.setPassword(passwordEncoder.encode(request.getPassword()));
         Employee saved = employeeRepository.save(employee);
         return employeeMapper.toResponse(saved);
     }

@@ -15,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,7 @@ public class ClientServiceImpl implements ClientService {
 
     private final ClientRepository clientRepository;
     private final ClientMapper clientMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public Page<ClientResponse> getAll(int page, int size, String sortField, String sortDir, String keyword) {
@@ -48,6 +50,7 @@ public class ClientServiceImpl implements ClientService {
     public ClientResponse create(CreateClientRequest request) {
         validateEmailUniquenessForCreate(request.getEmail());
         Client client = clientMapper.toEntity(request);
+        client.setPassword(passwordEncoder.encode(request.getPassword()));
         Client saved = clientRepository.save(client);
         return clientMapper.toResponse(saved);
     }
