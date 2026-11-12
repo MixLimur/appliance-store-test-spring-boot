@@ -14,6 +14,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.*;
 
 import java.util.Collections;
 import java.util.List;
@@ -56,35 +58,70 @@ class ManufacturerServiceImplTest {
     }
 
     @Test
-    @DisplayName("getAll() should return list of responses when manufacturers exist")
-    void getAll_WhenExist_ShouldReturnListOfResponses() {
-        when(repository.findAll()).thenReturn(List.of(entity));
+    @DisplayName("getAll() should return page of responses when keyword is null and sort direction is ASC")
+    void getAll_WhenKeywordIsNull_ShouldReturnPageOfResponses() {
+        Pageable expectedPageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.ASC, "id"));
+        Page<Manufacturer> page = new PageImpl<>(List.of(entity));
+        when(repository.findAll(expectedPageable)).thenReturn(page);
         when(mapper.toResponse(entity)).thenReturn(response);
 
-        List<ManufacturerResponse> result = service.getAll();
+        Page<ManufacturerResponse> result = service.getAll(0, 5, "id", "asc", null);
 
         assertNotNull(result);
-        assertEquals(1, result.size());
-        assertEquals(response, result.get(0));
-        verify(repository).findAll();
+        assertEquals(1, result.getTotalElements());
+        assertEquals(response, result.getContent().get(0));
+        verify(repository).findAll(expectedPageable);
         verify(mapper).toResponse(entity);
     }
 
     @Test
-    @DisplayName("getAll() should return empty list when no manufacturers exist")
-    void getAll_WhenEmpty_ShouldReturnEmptyList() {
-        when(repository.findAll()).thenReturn(Collections.emptyList());
+    @DisplayName("getAll() should ignore blank keyword and sort descending when sortDir is DESC")
+    void getAll_WhenKeywordIsBlankAndSortDesc_ShouldReturnSortedPage() {
+        Pageable expectedPageable = PageRequest.of(1, 10, Sort.by(Sort.Direction.DESC, "name"));
+        Page<Manufacturer> page = new PageImpl<>(List.of(entity));
+        when(repository.findAll(expectedPageable)).thenReturn(page);
+        when(mapper.toResponse(entity)).thenReturn(response);
 
-        List<ManufacturerResponse> result = service.getAll();
+        Page<ManufacturerResponse> result = service.getAll(1, 10, "name", "desc", "   ");
+
+        assertNotNull(result);
+        assertEquals(1, result.getContent().size());
+        verify(repository).findAll(expectedPageable);
+        verify(mapper).toResponse(entity);
+    }
+
+    @Test
+    @DisplayName("getAll() should trim keyword and fallback to ASC when sort direction is invalid")
+    void getAll_WhenKeywordProvidedAndSortInvalid_ShouldSearchWithTrimmedKeyword() {
+        Pageable expectedPageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.ASC, "name"));
+        Page<Manufacturer> page = new PageImpl<>(List.of(entity));
+        when(repository.findByNameContainingIgnoreCase("Samsung", expectedPageable)).thenReturn(page);
+        when(mapper.toResponse(entity)).thenReturn(response);
+
+        Page<ManufacturerResponse> result = service.getAll(0, 5, "name", "invalid_dir", "  Samsung  ");
+
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        verify(repository).findByNameContainingIgnoreCase("Samsung", expectedPageable);
+        verify(mapper).toResponse(entity);
+    }
+
+    @Test
+    @DisplayName("getAll() should return empty page when no manufacturers exist")
+    void getAll_WhenEmpty_ShouldReturnEmptyPage() {
+        Pageable expectedPageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.ASC, "id"));
+        when(repository.findAll(expectedPageable)).thenReturn(new PageImpl<>(Collections.emptyList()));
+
+        Page<ManufacturerResponse> result = service.getAll(0, 5, "id", "asc", null);
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
-        verify(repository).findAll();
+        verify(repository).findAll(expectedPageable);
         verifyNoInteractions(mapper);
     }
 
     @Test
-    @DisplayName("getById() should return response when found")
+    @DisplayName("getById() should return response when manufacturer exists")
     void getById_WhenFound_ShouldReturnResponse() {
         when(repository.findById(1L)).thenReturn(Optional.of(entity));
         when(mapper.toResponse(entity)).thenReturn(response);
@@ -98,17 +135,18 @@ class ManufacturerServiceImplTest {
     }
 
     @Test
-    @DisplayName("getById() should throw ResourceNotFoundException when not found")
+    @DisplayName("getById() should throw ResourceNotFoundException when manufacturer is not found")
     void getById_WhenNotFound_ShouldThrowException() {
         when(repository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> service.getById(99L));
+
         verify(repository).findById(99L);
         verifyNoInteractions(mapper);
     }
 
     @Test
-    @DisplayName("create() should map, save and return response")
+    @DisplayName("create() should map, save and return manufacturer response")
     void create_ShouldSaveAndReturnResponse() {
         when(mapper.toEntity(createRequest)).thenReturn(entity);
         when(repository.save(entity)).thenReturn(entity);
@@ -124,7 +162,7 @@ class ManufacturerServiceImplTest {
     }
 
     @Test
-    @DisplayName("update() should update entity and return response when found")
+    @DisplayName("update() should update entity and return response when manufacturer exists")
     void update_WhenFound_ShouldUpdateAndReturnResponse() {
         when(repository.findById(1L)).thenReturn(Optional.of(entity));
         when(repository.save(entity)).thenReturn(entity);
@@ -139,28 +177,43 @@ class ManufacturerServiceImplTest {
     }
 
     @Test
-    @DisplayName("update() should throw ResourceNotFoundException when manufacturer not found")
+    @DisplayName("update() should throw ResourceNotFoundException when manufacturer is not found")
     void update_WhenNotFound_ShouldThrowException() {
         when(repository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> service.update(99L, updateRequest));
+
         verify(repository).findById(99L);
         verify(repository, never()).save(any());
     }
 
     @Test
-    @DisplayName("delete() should delete entity when found")
-    void delete_WhenFound_ShouldDelete() {
+    @DisplayName("delete() should delete and flush manufacturer when found and not referenced")
+    void delete_WhenFound_ShouldDeleteAndFlush() {
         when(repository.existsById(1L)).thenReturn(true);
 
         assertDoesNotThrow(() -> service.delete(1L));
 
         verify(repository).existsById(1L);
         verify(repository).deleteById(1L);
+        verify(repository).flush();
     }
 
     @Test
-    @DisplayName("delete() should throw ResourceNotFoundException when not found")
+    @DisplayName("delete() should throw IllegalStateException when manufacturer is referenced in appliances")
+    void delete_WhenReferencedInAppliances_ShouldThrowIllegalStateException() {
+        when(repository.existsById(1L)).thenReturn(true);
+        doThrow(DataIntegrityViolationException.class).when(repository).flush();
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> service.delete(1L));
+
+        assertEquals("error.manufacturer.delete.referenced", exception.getMessage());
+        verify(repository).deleteById(1L);
+        verify(repository).flush();
+    }
+
+    @Test
+    @DisplayName("delete() should throw ResourceNotFoundException when manufacturer is not found")
     void delete_WhenNotFound_ShouldThrowException() {
         when(repository.existsById(99L)).thenReturn(false);
 
