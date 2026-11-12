@@ -35,16 +35,7 @@ public class EmployeeController {
             Model model) {
 
         Page<EmployeeResponse> pageResult = employeeService.getAll(page, size, sortField, sortDir, keyword);
-
-        model.addAttribute("employees", pageResult.getContent());
-        model.addAttribute("currentPage", page);
-        model.addAttribute("totalPages", pageResult.getTotalPages());
-        model.addAttribute("totalItems", pageResult.getTotalElements());
-        model.addAttribute("size", size);
-        model.addAttribute("sortField", sortField);
-        model.addAttribute("sortDir", sortDir);
-        model.addAttribute("reverseSortDir", sortDir.equals("asc") ? "desc" : "asc");
-        model.addAttribute("keyword", keyword);
+        populatePagingModel(model, pageResult, page, size, sortField, sortDir, keyword);
 
         return "employee/employees";
     }
@@ -67,6 +58,27 @@ public class EmployeeController {
         return "redirect:/employees";
     }
 
+    @GetMapping("/{id}/edit")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public String showEditForm(@PathVariable Long id, Model model) {
+        EmployeeResponse employee = employeeService.getById(id);
+        model.addAttribute("employee", mapToUpdateRequest(employee));
+        return "employee/editEmployee";
+    }
+
+    @PostMapping("/{id}/edit")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public String updateEmployee(@PathVariable Long id,
+                                 @Valid @ModelAttribute("employee") UpdateEmployeeRequest request,
+                                 BindingResult result) {
+        request.setId(id);
+        if (result.hasErrors()) {
+            return "employee/editEmployee";
+        }
+        employeeService.update(id, request);
+        return "redirect:/employees";
+    }
+
     @GetMapping("/{id}/delete")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public String deleteEmployee(@PathVariable Long id, RedirectAttributes redirectAttributes) {
@@ -83,29 +95,25 @@ public class EmployeeController {
         return "redirect:/employees";
     }
 
-    @GetMapping("/{id}/edit")
-    public String showEditForm(@PathVariable Long id, Model model) {
-        EmployeeResponse employee = employeeService.getById(id);
+    private void populatePagingModel(Model model, Page<EmployeeResponse> pageResult,
+                                     int page, int size, String sortField, String sortDir, String keyword) {
+        model.addAttribute("employees", pageResult.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", pageResult.getTotalPages());
+        model.addAttribute("totalItems", pageResult.getTotalElements());
+        model.addAttribute("size", size);
+        model.addAttribute("sortField", sortField);
+        model.addAttribute("sortDir", sortDir);
+        model.addAttribute("reverseSortDir", sortDir.equalsIgnoreCase("asc") ? "desc" : "asc");
+        model.addAttribute("keyword", keyword);
+    }
 
+    private UpdateEmployeeRequest mapToUpdateRequest(EmployeeResponse employee) {
         UpdateEmployeeRequest request = new UpdateEmployeeRequest();
         request.setId(employee.getId());
         request.setName(employee.getName());
         request.setEmail(employee.getEmail());
         request.setDepartment(employee.getDepartment());
-
-        model.addAttribute("employee", request);
-        return "employee/editEmployee";
+        return request;
     }
-
-    @PostMapping("/{id}/edit")
-    public String updateEmployee(@PathVariable Long id,
-                                 @Valid @ModelAttribute("employee") UpdateEmployeeRequest request,
-                                 BindingResult result) {
-        if (result.hasErrors()) {
-            return "employee/editEmployee";
-        }
-        employeeService.update(id, request);
-        return "redirect:/employees";
-    }
-
 }
