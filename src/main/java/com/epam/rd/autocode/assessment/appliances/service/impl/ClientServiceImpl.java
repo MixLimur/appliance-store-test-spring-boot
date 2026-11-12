@@ -11,6 +11,10 @@ import com.epam.rd.autocode.assessment.appliances.repository.ClientRepository;
 import com.epam.rd.autocode.assessment.appliances.service.ClientService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,10 +28,22 @@ public class ClientServiceImpl implements ClientService {
     private final ClientMapper clientMapper;
 
     @Override
-    public List<ClientResponse> getAll() {
-        return clientRepository.findAll().stream()
-                .map(clientMapper::toResponse)
-                .toList();
+    @Transactional(readOnly = true)
+    public Page<ClientResponse> getAll(int page, int size, String sortField, String sortDir, String keyword) {
+        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ?
+                Sort.by(sortField).ascending() : Sort.by(sortField).descending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<Client> clientPage;
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String k = keyword.trim();
+            clientPage = clientRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(k, k, pageable);
+        } else {
+            clientPage = clientRepository.findAll(pageable);
+        }
+
+        return clientPage.map(clientMapper::toResponse);
     }
 
     @Override

@@ -12,7 +12,12 @@ import com.epam.rd.autocode.assessment.appliances.repository.ManufacturerReposit
 import com.epam.rd.autocode.assessment.appliances.service.ApplianceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -25,10 +30,22 @@ public class ApplianceServiceImpl implements ApplianceService {
     private final ApplianceMapper applianceMapper;
 
     @Override
-    public List<ApplianceResponse> getAll() {
-        return applianceRepository.findAll().stream()
-                .map(applianceMapper::toResponse)
-                .toList();
+    @Transactional(readOnly = true)
+    public Page<ApplianceResponse> getAll(int page, int size, String sortField, String sortDir, String keyword) {
+        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ?
+                Sort.by(sortField).ascending() : Sort.by(sortField).descending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<Appliance> appliancePage;
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String k = keyword.trim();
+            appliancePage = applianceRepository.findByNameContainingIgnoreCaseOrModelContainingIgnoreCase(k, k, pageable);
+        } else {
+            appliancePage = applianceRepository.findAll(pageable);
+        }
+
+        return appliancePage.map(applianceMapper::toResponse);
     }
 
     @Override

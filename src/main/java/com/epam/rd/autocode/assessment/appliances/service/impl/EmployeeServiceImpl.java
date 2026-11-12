@@ -11,6 +11,10 @@ import com.epam.rd.autocode.assessment.appliances.repository.EmployeeRepository;
 import com.epam.rd.autocode.assessment.appliances.service.EmployeeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,10 +28,23 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeMapper employeeMapper;
 
     @Override
-    public List<EmployeeResponse> getAll() {
-        return employeeRepository.findAll().stream()
-                .map(employeeMapper::toResponse)
-                .toList();
+    @Transactional(readOnly = true)
+    public Page<EmployeeResponse> getAll(int page, int size, String sortField, String sortDir, String keyword) {
+        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ?
+                Sort.by(sortField).ascending() : Sort.by(sortField).descending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<Employee> employeePage;
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String k = keyword.trim();
+            employeePage = employeeRepository
+                    .findByNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrDepartmentContainingIgnoreCase(k, k, k, pageable);
+        } else {
+            employeePage = employeeRepository.findAll(pageable);
+        }
+
+        return employeePage.map(employeeMapper::toResponse);
     }
 
     @Override

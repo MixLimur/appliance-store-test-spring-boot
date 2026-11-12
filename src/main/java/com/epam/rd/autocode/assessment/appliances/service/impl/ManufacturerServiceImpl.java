@@ -10,6 +10,10 @@ import com.epam.rd.autocode.assessment.appliances.repository.ManufacturerReposit
 import com.epam.rd.autocode.assessment.appliances.service.ManufacturerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,10 +27,21 @@ public class ManufacturerServiceImpl implements ManufacturerService {
     private final ManufacturerMapper manufacturerMapper;
 
     @Override
-    public List<ManufacturerResponse> getAll() {
-        return manufacturerRepository.findAll().stream()
-                .map(manufacturerMapper::toResponse)
-                .toList();
+    @Transactional(readOnly = true)
+    public Page<ManufacturerResponse> getAll(int page, int size, String sortField, String sortDir, String keyword) {
+        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ?
+                Sort.by(sortField).ascending() : Sort.by(sortField).descending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<Manufacturer> manufacturerPage;
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            manufacturerPage = manufacturerRepository.findByNameContainingIgnoreCase(keyword.trim(), pageable);
+        } else {
+            manufacturerPage = manufacturerRepository.findAll(pageable);
+        }
+
+        return manufacturerPage.map(manufacturerMapper::toResponse);
     }
 
     @Override
