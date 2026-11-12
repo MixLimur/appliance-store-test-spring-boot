@@ -85,7 +85,7 @@ public class OrdersController {
             request.setClientId(currentClient.getId());
             model.addAttribute("currentClientName", currentClient.getName());
         } else {
-            model.addAttribute("clients", clientService.getAll());
+            model.addAttribute("clients", clientService.getAll(0, 1000,"id", "asc","").getContent());
         }
 
         model.addAttribute("order", request);
@@ -98,7 +98,7 @@ public class OrdersController {
                            Authentication authentication,
                            Model model) {
         if (result.hasErrors()) {
-            model.addAttribute("clients", clientService.getAll());
+            model.addAttribute("clients", clientService.getAll(0, 1000, "id", "asc", ""));
             return "order/newOrder";
         }
 
@@ -119,7 +119,7 @@ public class OrdersController {
 
         if (result.hasErrors()) {
             if (!isClient) {
-                model.addAttribute("clients", clientService.getAll());
+                model.addAttribute("clients", clientService.getAll(0, 1000, "id", "asc", ""));
             } else {
                 ClientResponse currentClient = clientService.getByEmail(authentication.getName());
                 model.addAttribute("currentClientName", currentClient.getName());
@@ -177,7 +177,7 @@ public class OrdersController {
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'CLIENT')")
     public String showChoiceApplianceForm(@PathVariable Long id, Model model) {
         model.addAttribute("ordersId", id);
-        model.addAttribute("appliances", applianceService.getAll());
+        model.addAttribute("appliances", applianceService.getAll(0, 1000, "id", "asc", "").getContent());
         return "order/choiceAppliance";
     }
 
