@@ -36,16 +36,7 @@ public class ManufacturerController {
             Model model) {
 
         Page<ManufacturerResponse> pageResult = manufacturerService.getAll(page, size, sortField, sortDir, keyword);
-
-        model.addAttribute("manufacturers", pageResult.getContent());
-        model.addAttribute("currentPage", page);
-        model.addAttribute("totalPages", pageResult.getTotalPages());
-        model.addAttribute("totalItems", pageResult.getTotalElements());
-        model.addAttribute("size", size);
-        model.addAttribute("sortField", sortField);
-        model.addAttribute("sortDir", sortDir);
-        model.addAttribute("reverseSortDir", sortDir.equals("asc") ? "desc" : "asc");
-        model.addAttribute("keyword", keyword);
+        populatePagingModel(model, pageResult, page, size, sortField, sortDir, keyword);
 
         return "manufacture/manufacturers";
     }
@@ -68,6 +59,27 @@ public class ManufacturerController {
         return "redirect:/manufacturers";
     }
 
+    @GetMapping("/{id}/edit")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public String showEditForm(@PathVariable Long id, Model model) {
+        ManufacturerResponse manufacturer = manufacturerService.getById(id);
+        model.addAttribute("manufacturer", mapToUpdateRequest(manufacturer));
+        return "manufacture/editManufacturer";
+    }
+
+    @PostMapping("/{id}/edit")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public String updateManufacturer(@PathVariable Long id,
+                                     @Valid @ModelAttribute("manufacturer") UpdateManufacturerRequest request,
+                                     BindingResult result) {
+        request.setId(id);
+        if (result.hasErrors()) {
+            return "manufacture/editManufacturer";
+        }
+        manufacturerService.update(id, request);
+        return "redirect:/manufacturers";
+    }
+
     @GetMapping("/{id}/delete")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public String deleteManufacturer(@PathVariable Long id, RedirectAttributes redirectAttributes) {
@@ -84,27 +96,24 @@ public class ManufacturerController {
         return "redirect:/manufacturers";
     }
 
-    @GetMapping("/{id}/edit")
-    public String showEditForm(@PathVariable Long id, Model model) {
-        ManufacturerResponse manufacturer = manufacturerService.getById(id);
+    private void populatePagingModel(Model model, Page<ManufacturerResponse> pageResult,
+                                     int page, int size, String sortField, String sortDir, String keyword) {
+        model.addAttribute("manufacturers", pageResult.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", pageResult.getTotalPages());
+        model.addAttribute("totalItems", pageResult.getTotalElements());
+        model.addAttribute("size", size);
+        model.addAttribute("sortField", sortField);
+        model.addAttribute("sortDir", sortDir);
+        model.addAttribute("reverseSortDir", sortDir.equalsIgnoreCase("asc") ? "desc" : "asc");
+        model.addAttribute("keyword", keyword);
+    }
 
+    private UpdateManufacturerRequest mapToUpdateRequest(ManufacturerResponse manufacturer) {
         UpdateManufacturerRequest request = new UpdateManufacturerRequest();
         request.setId(manufacturer.getId());
         request.setName(manufacturer.getName());
-
-        model.addAttribute("manufacturer", request);
-        return "manufacture/editManufacturer";
-    }
-
-    @PostMapping("/{id}/edit")
-    public String updateManufacturer(@PathVariable Long id,
-                                     @Valid @ModelAttribute("manufacturer") UpdateManufacturerRequest request,
-                                     BindingResult result) {
-        if (result.hasErrors()) {
-            return "manufacture/editManufacturer";
-        }
-        manufacturerService.update(id, request);
-        return "redirect:/manufacturers";
+        return request;
     }
 
 }
