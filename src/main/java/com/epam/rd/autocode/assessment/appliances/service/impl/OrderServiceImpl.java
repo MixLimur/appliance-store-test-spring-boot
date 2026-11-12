@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class OrderServiceImpl implements OrderService {
 
     private final OrdersRepository ordersRepository;
@@ -34,33 +35,16 @@ public class OrderServiceImpl implements OrderService {
     private final OrdersMapper ordersMapper;
 
     @Override
-    @Transactional(readOnly = true)
     public Page<OrdersResponse> getAll(int page, int size, String sortField, String sortDir, String keyword, String userEmail, boolean isEmployee) {
-        String actualSortField = "amount".equals(sortField) ? "id" : sortField;
-
-        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ?
-                Sort.by(actualSortField).ascending() : Sort.by(actualSortField).descending();
-
-        Pageable pageable = PageRequest.of(page, size, sort);
-
-        Page<Orders> ordersPage = isEmployee ?
-                ordersRepository.findAllWithFilter(keyword, pageable) :
-                ordersRepository.findByClientEmailWithFilter(userEmail, keyword, pageable);
+        Pageable pageable = createPageable(page, size, sortField, sortDir);
+        Page<Orders> ordersPage = fetchOrdersPage(keyword, userEmail, isEmployee, pageable);
 
         List<OrdersResponse> content = ordersPage.stream()
                 .map(ordersMapper::toResponse)
                 .collect(Collectors.toList());
 
-        // Ручне сортування в пам'яті, якщо обрано amount
         if ("amount".equals(sortField)) {
-            Comparator<OrdersResponse> comparator = Comparator.comparing(
-                    OrdersResponse::getAmount,
-                    Comparator.nullsFirst(BigDecimal::compareTo)
-            );
-            if ("desc".equalsIgnoreCase(sortDir)) {
-                comparator = comparator.reversed();
-            }
-            content.sort(comparator);
+            sortContentByAmount(content, sortDir);
         }
 
         return new PageImpl<>(content, pageable, ordersPage.getTotalElements());
@@ -68,25 +52,14 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrdersResponse getById(Long id) {
-        return ordersRepository.findById(id)
-                .map(ordersMapper::toResponse)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
-
+        return ordersMapper.toResponse(findOrderById(id));
     }
 
     @Override
     @Transactional
     public OrdersResponse create(CreateOrdersRequest request) {
-        Long clientId = request.getClientId();
-        Client client = clientRepository.findById(clientId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cannot create order. Client not found with id: " + clientId));
-
-        Employee employee = null;
-        if (request.getEmployeeId() != null) {
-            Long employeeId = request.getEmployeeId();
-            employee = employeeRepository.findById(employeeId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Cannot create order. Employee not found with id: " + employeeId));
-        }
+        Client client = findClientById(request.getClientId());
+        Employee employee = findOptionalEmployeeById(request.getEmployeeId());
 
         Orders order = ordersMapper.toEntity(request, client, employee, Collections.emptySet());
         Orders savedOrder = ordersRepository.save(order);
@@ -96,42 +69,14 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrdersResponse update(Long id, UpdateOrdersRequest request) {
-        Orders existingOrder = ordersRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
+        Orders existingOrder = findOrderById(id);
+        ensureOrderIsNotApproved(existingOrder);
 
-        Long clientId = request.getClientId();
-        Client client = clientRepository.findById(clientId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cannot update order. Client not found with id: " + clientId));
-
-        Employee employee = null;
-        if (request.getEmployeeId() != null) {
-            Long employeeId = request.getEmployeeId();
-            employee = employeeRepository.findById(employeeId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Cannot update order. Employee not found with id: " + employeeId));
-        }
-
-        if (Boolean.TRUE.equals(existingOrder.getApproved())) {
-            throw new IllegalStateException("Cannot modify an approved order with id: " + id);
-        }
-
-        Set<OrderRow> updatedOrderRows = Collections.emptySet();
-        if (request.getOrderRowSet() != null) {
-            updatedOrderRows = request.getOrderRowSet().stream()
-                    .map(rowRequest -> {
-                        Appliance appliance = applianceRepository.findById(rowRequest.getApplianceId())
-                                .orElseThrow(() -> new ResourceNotFoundException("Appliance not found with id: " + rowRequest.getApplianceId()));
-                        OrderRow row = new OrderRow();
-                        row.setId(rowRequest.getId());
-                        row.setAppliance(appliance);
-                        row.setNumber(rowRequest.getNumber());
-                        row.setAmount(rowRequest.getAmount());
-                        return row;
-                    })
-                    .collect(Collectors.toSet());
-        }
+        Client client = findClientById(request.getClientId());
+        Employee employee = findOptionalEmployeeById(request.getEmployeeId());
+        Set<OrderRow> updatedOrderRows = mapOrderRowRequests(request);
 
         ordersMapper.updateEntityFromRequest(request, existingOrder, client, employee, updatedOrderRows);
-
         Orders updatedOrder = ordersRepository.save(existingOrder);
         return ordersMapper.toResponse(updatedOrder);
     }
@@ -139,28 +84,18 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public void delete(Long id) {
-        Orders existingOrder = ordersRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
-
-        if (Boolean.TRUE.equals(existingOrder.getApproved())) {
-            throw new IllegalStateException("Cannot delete an approved order with id: " + id);
-        }
+        Orders existingOrder = findOrderById(id);
+        ensureOrderIsNotApproved(existingOrder);
         ordersRepository.deleteById(id);
     }
 
     @Override
     @Transactional
     public void assignEmployee(Long orderId, String employeeEmail) {
-        Orders existingOrder = ordersRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+        Orders existingOrder = findOrderById(orderId);
+        ensureOrderIsNotApproved(existingOrder);
 
-        if (Boolean.TRUE.equals(existingOrder.getApproved())) {
-            throw new IllegalStateException("Cannot modify an approved order with id: " + orderId);
-        }
-
-        Employee employee = employeeRepository.findByEmail(employeeEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with email: " + employeeEmail));
-
+        Employee employee = findEmployeeByEmail(employeeEmail);
         existingOrder.setEmployee(employee);
         ordersRepository.save(existingOrder);
     }
@@ -168,12 +103,8 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public void deleteOrderRow(Long orderId, Long rowId) {
-        Orders existingOrder = ordersRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
-
-        if (Boolean.TRUE.equals(existingOrder.getApproved())) {
-            throw new IllegalStateException("Cannot modify an approved order with id: " + orderId);
-        }
+        Orders existingOrder = findOrderById(orderId);
+        ensureOrderIsNotApproved(existingOrder);
 
         existingOrder.getOrderRowSet().removeIf(row -> row.getId().equals(rowId));
         ordersRepository.save(existingOrder);
@@ -182,29 +113,110 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public void updateOrderRowNumber(Long orderId, Long rowId, Long number) {
-        if (number == null || number < 1) {
-            throw new IllegalArgumentException("Quantity must be at least 1");
+        validateQuantity(number);
+
+        Orders existingOrder = findOrderById(orderId);
+        ensureOrderIsNotApproved(existingOrder);
+
+        OrderRow targetRow = findOrderRowById(existingOrder, rowId);
+        targetRow.setNumber(number);
+        calculateAndSetRowAmount(targetRow, number);
+
+        ordersRepository.save(existingOrder);
+    }
+
+    private Pageable createPageable(int page, int size, String sortField, String sortDir) {
+        String actualSortField = "amount".equals(sortField) ? "id" : sortField;
+        Sort.Direction direction = Sort.Direction.fromOptionalString(sortDir)
+                .orElse(Sort.Direction.ASC);
+        return PageRequest.of(page, size, Sort.by(direction, actualSortField));
+    }
+
+    private Page<Orders> fetchOrdersPage(String keyword, String userEmail, boolean isEmployee, Pageable pageable) {
+        return isEmployee ?
+                ordersRepository.findAllWithFilter(keyword, pageable) :
+                ordersRepository.findByClientEmailWithFilter(userEmail, keyword, pageable);
+    }
+
+    private void sortContentByAmount(List<OrdersResponse> content, String sortDir) {
+        Comparator<OrdersResponse> comparator = Comparator.comparing(
+                OrdersResponse::getAmount,
+                Comparator.nullsFirst(BigDecimal::compareTo)
+        );
+        if ("desc".equalsIgnoreCase(sortDir)) {
+            comparator = comparator.reversed();
         }
+        content.sort(comparator);
+    }
 
-        Orders existingOrder = ordersRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+    private Orders findOrderById(Long id) {
+        return ordersRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
+    }
 
-        if (Boolean.TRUE.equals(existingOrder.getApproved())) {
-            throw new IllegalStateException("Cannot modify an approved order with id: " + orderId);
+    private Client findClientById(Long clientId) {
+        return clientRepository.findById(clientId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cannot process order. Client not found with id: " + clientId));
+    }
+
+    private Employee findOptionalEmployeeById(Long employeeId) {
+        if (employeeId == null) {
+            return null;
         }
+        return employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cannot process order. Employee not found with id: " + employeeId));
+    }
 
-        OrderRow targetRow = existingOrder.getOrderRowSet().stream()
+    private Employee findEmployeeByEmail(String employeeEmail) {
+        return employeeRepository.findByEmail(employeeEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found with email: " + employeeEmail));
+    }
+
+    private Appliance findApplianceById(Long applianceId) {
+        return applianceRepository.findById(applianceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Appliance not found with id: " + applianceId));
+    }
+
+    private OrderRow findOrderRowById(Orders order, Long rowId) {
+        return order.getOrderRowSet().stream()
                 .filter(row -> row.getId().equals(rowId))
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Order row not found with id: " + rowId));
+    }
 
-        targetRow.setNumber(number);
-
-        if (targetRow.getAppliance() != null && targetRow.getAppliance().getPrice() != null) {
-            targetRow.setAmount(targetRow.getAppliance().getPrice().multiply(java.math.BigDecimal.valueOf(number)));
+    private void ensureOrderIsNotApproved(Orders order) {
+        if (Boolean.TRUE.equals(order.getApproved())) {
+            throw new IllegalStateException("Cannot modify an approved order with id: " + order.getId());
         }
+    }
 
-        ordersRepository.save(existingOrder);
+    private void validateQuantity(Long number) {
+        if (number == null || number < 1) {
+            throw new IllegalArgumentException("Quantity must be at least 1");
+        }
+    }
+
+    private Set<OrderRow> mapOrderRowRequests(UpdateOrdersRequest request) {
+        if (request.getOrderRowSet() == null) {
+            return Collections.emptySet();
+        }
+        return request.getOrderRowSet().stream()
+                .map(rowRequest -> {
+                    Appliance appliance = findApplianceById(rowRequest.getApplianceId());
+                    OrderRow row = new OrderRow();
+                    row.setId(rowRequest.getId());
+                    row.setAppliance(appliance);
+                    row.setNumber(rowRequest.getNumber());
+                    row.setAmount(rowRequest.getAmount());
+                    return row;
+                })
+                .collect(Collectors.toSet());
+    }
+
+    private void calculateAndSetRowAmount(OrderRow row, Long number) {
+        if (row.getAppliance() != null && row.getAppliance().getPrice() != null) {
+            row.setAmount(row.getAppliance().getPrice().multiply(BigDecimal.valueOf(number)));
+        }
     }
 }
 
