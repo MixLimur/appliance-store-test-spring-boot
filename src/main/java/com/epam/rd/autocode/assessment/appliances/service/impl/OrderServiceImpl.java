@@ -1,5 +1,6 @@
 package com.epam.rd.autocode.assessment.appliances.service.impl;
 
+import com.epam.rd.autocode.assessment.appliances.aspect.Loggable;
 import com.epam.rd.autocode.assessment.appliances.dto.orders.CreateOrdersRequest;
 import com.epam.rd.autocode.assessment.appliances.dto.orders.OrdersResponse;
 import com.epam.rd.autocode.assessment.appliances.dto.orders.UpdateOrdersRequest;
@@ -57,6 +58,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
+    @Loggable
     public OrdersResponse create(CreateOrdersRequest request) {
         Client client = findClientById(request.getClientId());
         Employee employee = findOptionalEmployeeById(request.getEmployeeId());
@@ -68,6 +70,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
+    @Loggable
     public OrdersResponse update(Long id, UpdateOrdersRequest request) {
         Orders existingOrder = findOrderById(id);
         ensureOrderIsNotApproved(existingOrder);

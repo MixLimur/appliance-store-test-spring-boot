@@ -1,5 +1,6 @@
 package com.epam.rd.autocode.assessment.appliances.service.impl;
 
+import com.epam.rd.autocode.assessment.appliances.aspect.Loggable;
 import com.epam.rd.autocode.assessment.appliances.model.Client;
 import com.epam.rd.autocode.assessment.appliances.model.Employee;
 import com.epam.rd.autocode.assessment.appliances.repository.ClientRepository;
@@ -27,6 +28,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     private final ClientRepository clientRepository;
 
     @Override
+    @Loggable   
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         return employeeRepository.findByEmail(email)
                 .map(employee -> buildUserDetails(employee.getEmail(), employee.getPassword(), ROLE_EMPLOYEE))
