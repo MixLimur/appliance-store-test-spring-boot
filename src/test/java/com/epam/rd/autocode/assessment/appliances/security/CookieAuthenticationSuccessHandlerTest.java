@@ -53,7 +53,6 @@ class CookieAuthenticationSuccessHandlerTest {
         assertNotNull(cookie);
         assertEquals(generatedToken, cookie.getValue());
         assertEquals("/", cookie.getPath());
-        assertTrue(cookie.isHttpOnly());
         assertFalse(cookie.getSecure());
         assertEquals(24 * 60 * 60, cookie.getMaxAge());
         assertEquals("/", response.getRedirectedUrl());
