@@ -26,7 +26,7 @@ public class CookieAuthenticationSuccessHandler implements AuthenticationSuccess
 
         Cookie jwtCookie = new Cookie("jwt", jwtToken);
         jwtCookie.setHttpOnly(true);
-        jwtCookie.setSecure(false);
+        jwtCookie.setSecure(true);
         jwtCookie.setPath("/");
         jwtCookie.setMaxAge(24 * 60 * 60); // 1 day
 
